@@ -1,0 +1,11 @@
+src/.env
+**/node_modules
+**/.venv
+**/dist
+**/__pycache__
+**/.pytest_cache
+**/.ruff_cache
+src/media
+src/e2e/playwright-report
+src/e2e/test-results
+prompts/sessoes/**/*.jsonl

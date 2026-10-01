@@ -1,0 +1,16 @@
+{
+  "hooks": {
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"$CLAUDE_PROJECT_DIR/.claude/hooks/exportar-sessao.py\"",
+            "timeout": 15,
+            "statusMessage": "Exportando sessão pra prompts/sessoes/"
+          }
+        ]
+      }
+    ]
+  }
+}

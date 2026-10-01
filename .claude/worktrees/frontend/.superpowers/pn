@@ -1,0 +1,9 @@
+#!/usr/bin/env bash
+set -euo pipefail
+root="$(cd "$(dirname "$0")/.." && pwd)"
+mkdir -p "$root/.superpowers/home"
+exec docker run --rm -u 1000:1000 \
+  -e HOME=/home/dev -e COREPACK_ENABLE_DOWNLOAD_PROMPT=0 -e CI=true -e NO_COLOR=1 -e FORCE_COLOR=0 \
+  ${PN_ENV:+-e "$PN_ENV"} \
+  -v "$root/src/frontend:/app" -v "$root/.superpowers/home:/home/dev" \
+  -w /app node:22-alpine corepack pnpm "$@"

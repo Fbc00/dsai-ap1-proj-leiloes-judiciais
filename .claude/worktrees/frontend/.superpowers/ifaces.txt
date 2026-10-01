@@ -1,0 +1,143 @@
+40: ### Task 1: Scaffold, tipos, client HTTP, infraestrutura de teste e mock
+42: **Files:**
+43: - Create: `src/frontend/package.json`, `src/frontend/.gitignore`, `src/frontend/index.html`, `src/frontend/tsconfig.json`, `src/frontend/tsconfig.app.json`, `src/frontend/tsconfig.node.json`, `src/frontend/vite.config.ts`, `src/frontend/vitest.config.ts`, `src/frontend/biome.json`, `src/frontend/src/vite-env.d.ts`, `src/frontend/src/index.css`, `src/frontend/src/main.tsx`, `src/frontend/src/app/App.tsx` (provisório), `src/frontend/src/api/types.ts`, `src/frontend/src/api/client.ts`, `src/frontend/src/lib/formatar.ts`, `src/frontend/src/api/mocks/db.ts`, `src/frontend/src/api/mocks/fixtures.ts`, `src/frontend/src/api/mocks/feriados.ts`, `src/frontend/src/api/mocks/http.ts`, `src/frontend/src/api/mocks/handlers.ts`, `src/frontend/src/api/mocks/browser.ts`, `src/frontend/src/api/mocks/server.ts`, `src/frontend/src/test/setup.ts`, `src/frontend/src/test/render.tsx`, `src/frontend/public/mockServiceWorker.js` (gerado), `src/frontend/Dockerfile`
+44: - Modify: `src/frontend/CLAUDE.md` (bloco `## Layout`)
+45: - Test: `src/frontend/src/api/client.test.ts`, `src/frontend/src/lib/formatar.test.ts`
+46: 
+47: **Interfaces:**
+48: - Consumes: nada (primeira task).
+49: - Produces:
+50:   - `src/api/types.ts`: todos os tipos da spec backend §2 (listados abaixo) + `FeriadoOut = { data: string; motivo: string }` (forma de `GET /agenda/feriados`, spec backend §3).
+51:   - `src/api/client.ts`: `class ApiError extends Error { readonly status: number; readonly detail: string }`, `registrarNaoAutenticado(cb: (() => void) | null): void`, `lerCookie(nome: string): string | null`, `mensagemErro(erro: unknown): string`, `const api: { get<T>(path): Promise<T>; post<T>(path, body?): Promise<T>; put<T>(path, body?): Promise<T>; patch<T>(path, body?): Promise<T>; del(path): Promise<void> }`.
+52:   - `src/lib/formatar.ts`: `formatarDinheiro(valor: string | null): string`, `formatarData(iso: string | null): string`, `formatarDataHora(iso: string | null): string`, `ouTraco(valor: string | null | undefined): string`.
+53:   - `src/api/mocks/db.ts`: tipos `UsuarioMock`, `ProcessoMock`, `LeilaoMock`, `EnvioMock`, `Db`; `const db: Db`; `reset(): void`; `novoId(prefixo: string): string`; `logar(username?: 'admin' | 'operador'): void`; `usuarioLogado(): UsuarioMock | null`; `registrarFalhaLogin(username)`, `limparFalhasLogin(username)`, `segundosBloqueio(username): number`; `leilaoAtivo(processoId): LeilaoMock | null`; `toUsuarioOut(u)`, `toProcessoOut(p)`, `toDetalhe(p)`, `toLeilaoOut(l)`, `toEnvioOut(e)`; constantes `LOGIN_MAX_TENTATIVAS`, `LOGIN_JANELA_MS`, `MARKETING_EMAILS`.
+54:   - `src/api/mocks/fixtures.ts`: `CHECKLIST_EXEMPLO: Checklist` (com `tipo_justica: 'federal'`), `RELATORIO_EXEMPLO: Relatorio`.
+55:   - `src/api/mocks/feriados.ts`: `type Feriado = { data: string; motivo: string }`, `const FERIADOS: readonly Feriado[]` (BR + PA, 2026 e 2027), `feriadosDoAno(ano: number): Feriado[]`.
+56:   - `src/api/mocks/http.ts`: `erro(status, detail): HttpResponse`, `exigirSessao(): HttpResponse | null`, `exigirAdmin(): HttpResponse | null`.
+57:   - `src/api/mocks/handlers.ts`: `const handlers: HttpHandler[]` (começa só com `GET /api/health`; cresce por task).
+58:   - `src/test/render.tsx`: `criarQueryClientDeTeste(): QueryClient`, `renderComApp(ui, { rota? })`.
+59: 
+1358: ### Task 2: Autenticação — login, perfis, rota protegida/admin, layout, minha senha
+1360: **Files:**
+1361: - Create: `src/frontend/src/api/auth.ts`, `src/frontend/src/features/auth/LoginPage.tsx`, `src/frontend/src/features/auth/useUsuario.ts`, `src/frontend/src/features/auth/RotaProtegida.tsx`, `src/frontend/src/features/auth/RotaAdmin.tsx`, `src/frontend/src/features/auth/MinhaSenhaDialog.tsx`, `src/frontend/src/app/rotas.tsx`, `src/frontend/src/app/router.ts`, `src/frontend/src/app/providers.tsx`, `src/frontend/src/app/Layout.tsx`, `src/frontend/src/components/Botao.tsx`, `src/frontend/src/components/Card.tsx`, `src/frontend/src/components/Field.tsx`, `src/frontend/src/components/Alerta.tsx`, `src/frontend/src/components/Dialog.tsx`, `src/frontend/src/api/mocks/auth.ts`
+1362: - Modify: `src/frontend/src/main.tsx`, `src/frontend/src/api/mocks/handlers.ts`, `src/frontend/src/test/render.tsx`
+1363: - Delete: `src/frontend/src/app/App.tsx`
+1364: - Test: `src/frontend/src/features/auth/auth.test.tsx`
+1365: 
+1366: **Interfaces:**
+1367: - Consumes: `api`, `mensagemErro`, `registrarNaoAutenticado` (Task 1); `db`, `logar`, `usuarioLogado`, `registrarFalhaLogin`, `limparFalhasLogin`, `segundosBloqueio`, `toUsuarioOut` (Task 1); `erro`, `exigirSessao` (Task 1).
+1368: - Produces:
+1369:   - `src/api/auth.ts`: `const chaveUsuario = ['auth', 'me'] as const`, `login(dados: LoginIn): Promise<UsuarioOut>`, `logout(): Promise<void>`, `me(): Promise<UsuarioOut>`, `alterarSenha(dados: SenhaIn): Promise<void>`.
+1370:   - `src/features/auth/useUsuario.ts`: `useUsuario(): UseQueryResult<UsuarioOut, Error> & { ehAdmin: boolean }`.
+1371:   - `src/features/auth/RotaProtegida.tsx`: `RotaProtegida()` (renderiza `<Outlet/>`). `RotaAdmin.tsx`: `RotaAdmin()` (operador → `<Navigate to="/" replace/>`).
+1372:   - `src/features/auth/MinhaSenhaDialog.tsx`: `MinhaSenhaDialog({ aberto, onFechar }: { aberto: boolean; onFechar: () => void })`.
+1373:   - `src/app/rotas.tsx`: `const rotas: RouteObject[]` — `/login`; sob `RotaProtegida` > `Layout`: `/` (placeholder até a Task 4) e, sob `RotaAdmin`, `/usuarios` (placeholder até a Task 3).
+1374:   - `src/app/router.ts`: `const router = createBrowserRouter(rotas)`. `src/app/providers.tsx`: `const queryClient`, `Providers({ children })`.
+1375:   - `src/components/Botao.tsx`: `Botao(props: ButtonHTMLAttributes<HTMLButtonElement> & { variante?: 'primario' | 'secundario' | 'perigo' })`. `Card({ titulo, acoes?, children })`. `Field({ label, htmlFor, erro?, children })`. `Alerta({ tipo: 'erro' | 'sucesso' | 'info', children })` com `role="alert"`. `Dialog({ aberto, titulo, onFechar, children })` com `role="dialog"`.
+1376:   - `src/test/render.tsx`: `renderComRouter(rota: string)` → `{ user, router, queryClient, ...RenderResult }`.
+1377:   - `src/api/mocks/auth.ts`: `const authHandlers: HttpHandler[]` (`POST /auth/login`, `POST /auth/logout`, `GET /auth/me`, `PUT /auth/senha`).
+1378: 
+2177: ### Task 3: Usuários (admin) — listar, criar, editar, ativar/desativar, redefinir senha
+2179: **Files:**
+2180: - Create: `src/frontend/src/api/usuarios.ts`, `src/frontend/src/features/usuarios/UsuariosPage.tsx`, `src/frontend/src/features/usuarios/UsuarioForm.tsx`, `src/frontend/src/features/usuarios/RedefinirSenhaDialog.tsx`, `src/frontend/src/components/StatusBadge.tsx`, `src/frontend/src/api/mocks/usuarios.ts`
+2181: - Modify: `src/frontend/src/app/rotas.tsx`, `src/frontend/src/api/mocks/handlers.ts`
+2182: - Test: `src/frontend/src/features/usuarios/UsuariosPage.test.tsx`
+2183: 
+2184: **Interfaces:**
+2185: - Consumes: `api`, `mensagemErro` (Task 1); `db`, `logar`, `novoId`, `toUsuarioOut`, `usuarioLogado`, `UsuarioMock` (Task 1); `erro`, `exigirAdmin` (Task 1); `Card`, `Botao`, `Field`, `Alerta`, `Dialog` (Task 2); `SENHA_MIN`, `MSG_SENHA_CURTA` (Task 2, `MinhaSenhaDialog.tsx`); `renderComRouter` (Task 2).
+2186: - Produces:
+2187:   - `src/api/usuarios.ts`: `const chavesUsuarios = { lista: ['usuarios'] as const }`, `listarUsuarios(): Promise<UsuarioOut[]>`, `criarUsuario(dados: UsuarioCreate): Promise<UsuarioOut>`, `atualizarUsuario(id: string, dados: UsuarioUpdate): Promise<UsuarioOut>`.
+2188:   - `src/components/StatusBadge.tsx`: `StatusBadge({ status }: { status: ProcessoStatus | LeilaoStatus | EnvioStatus | 'ativo' | 'inativo' })`.
+2189:   - `features/usuarios/UsuarioForm.tsx`: `UsuarioForm({ modo, inicial?, salvando, erro, onSalvar, onCancelar })` com `modo: 'novo' | 'editar'`; `onSalvar(dados: UsuarioCreate)` em `novo`, `onSalvar({ nome, perfil })` em `editar` — assinatura única `onSalvar: (dados: UsuarioCreate | Pick<UsuarioUpdate, 'nome' | 'perfil'>) => void`.
+2190:   - `features/usuarios/RedefinirSenhaDialog.tsx`: `RedefinirSenhaDialog({ usuario, onFechar }: { usuario: UsuarioOut | null; onFechar: () => void })`.
+2191:   - `features/usuarios/UsuariosPage.tsx`: `UsuariosPage()`.
+2192:   - `src/api/mocks/usuarios.ts`: `const usuariosHandlers: HttpHandler[]` (`GET/POST /usuarios`, `PATCH /usuarios/:id`, todos **[admin]**).
+2193: 
+2789: ### Task 4: Processos — lista, upload de PDF e apagar (admin)
+2791: **Files:**
+2792: - Create: `src/frontend/src/api/processos.ts`, `src/frontend/src/features/processos/ProcessosPage.tsx`, `src/frontend/src/features/processos/UploadProcesso.tsx`, `src/frontend/src/features/processos/ApagarProcessoDialog.tsx`, `src/frontend/src/api/mocks/processos.ts`
+2793: - Modify: `src/frontend/src/app/rotas.tsx`, `src/frontend/src/api/mocks/handlers.ts`
+2794: - Test: `src/frontend/src/features/processos/ProcessosPage.test.tsx`
+2795: 
+2796: **Interfaces:**
+2797: - Consumes: `api`, `mensagemErro` (Task 1); `formatarDataHora`, `ouTraco` (Task 1); `db`, `logar`, `novoId`, `toProcessoOut`, `leilaoAtivo`, `ProcessoMock` (Task 1); `erro`, `exigirSessao`, `exigirAdmin` (Task 1); `Alerta`, `Botao`, `Dialog` (Task 2); `useUsuario` (Task 2); `StatusBadge` (Task 3); `renderComRouter` (Task 2).
+2798: - Produces:
+2799:   - `src/api/processos.ts`: `const chavesProcessos = { lista: ['processos'] as const, detalhe: (id: string) => ['processos', id] as const }`, `listarProcessos(): Promise<ProcessoOut[]>`, `obterProcesso(id): Promise<ProcessoDetalheOut>`, `enviarProcesso(arquivo: File): Promise<ProcessoOut>`, `analisarProcesso(id): Promise<ProcessoDetalheOut>`, `salvarChecklist(id, checklist: Checklist): Promise<Checklist>`, `excluirProcesso(id): Promise<void>`.
+2800:   - `features/processos/ApagarProcessoDialog.tsx`: `ApagarProcessoDialog({ processo, onFechar }: { processo: ProcessoOut | null; onFechar: () => void })`.
+2801:   - `src/api/mocks/processos.ts`: `const processosHandlers: HttpHandler[]` (`GET/POST /processos`, `DELETE /processos/:id` **[admin]**; Task 5 acrescenta detalhe/analisar/checklist).
+2802: 
+3231: ### Task 5: Detalhe do processo — analisar, aviso de IA, checklist (visualizar/editar) e relatório
+3233: **Files:**
+3234: - Create: `src/frontend/src/components/AvisoIA.tsx`, `src/frontend/src/features/processos/ProcessoDetalhePage.tsx`, `src/frontend/src/features/processos/ChecklistView.tsx`, `src/frontend/src/features/processos/ChecklistForm.tsx`, `src/frontend/src/features/processos/RelatorioView.tsx`, `src/frontend/src/features/processos/validacao.ts`
+3235: - Modify: `src/frontend/src/app/rotas.tsx`, `src/frontend/src/api/mocks/processos.ts`
+3236: - Test: `src/frontend/src/features/processos/ProcessoDetalhePage.test.tsx`, `src/frontend/src/features/processos/validacao.test.ts`
+3237: 
+3238: **Interfaces:**
+3239: - Consumes: `chavesProcessos`, `obterProcesso`, `analisarProcesso`, `salvarChecklist` (Task 4); `buscarProcesso`, `processosHandlers` (Task 4); `Checklist`, `BemPenhorado`, `Execucao`, `Relatorio`, `ProcessoDetalheOut` (Task 1); `formatarDinheiro`, `formatarData`, `ouTraco` (Task 1); `Card`, `Botao`, `Field`, `Alerta` (Task 2); `StatusBadge` (Task 3); `CHECKLIST_EXEMPLO`, `RELATORIO_EXEMPLO`, `db`, `toDetalhe`, `logar` (Task 1).
+3240: - Produces:
+3241:   - `components/AvisoIA.tsx`: `AvisoIA()` — `<p role="note">Gerado por IA a partir do PDF — revise antes de usar.</p>`; constante exportada `TEXTO_AVISO_IA`.
+3242:   - `features/processos/validacao.ts`: `PADRAO_DINHEIRO: RegExp`, `dinheiroValido(valor: string | null): boolean`, `camposDinheiroInvalidos(checklist: Checklist): string[]`, `normalizarVazio(valor: string): string | null`.
+3243:   - `features/processos/ChecklistView.tsx`: `ChecklistView({ checklist, onEditar }: { checklist: Checklist; onEditar: () => void })`.
+3244:   - `features/processos/ChecklistForm.tsx`: `ChecklistForm({ inicial, salvando, erro, onSalvar, onCancelar }: { inicial: Checklist; salvando: boolean; erro: string | null; onSalvar: (c: Checklist) => void; onCancelar: () => void })`.
+3245:   - `features/processos/RelatorioView.tsx`: `RelatorioView({ relatorio }: { relatorio: Relatorio })`.
+3246:   - `features/processos/ProcessoDetalhePage.tsx`: `ProcessoDetalhePage()` — lê `:id` de `useParams`. É o **ponto de composição** (spec frontend §3): Tasks 6–8 inserem `AgendarLeilaoCard`, `EditalCard` e `EnviarMarketingCard` abaixo do `RelatorioView`.
+3247:   - Mock: `GET /api/processos/:id`, `POST /api/processos/:id/analisar`, `PUT /api/processos/:id/checklist`.
+3248: 
+4081: ### Task 6: Agenda — regras de data (feriados BR+PA), agendar/cancelar leilão, calendário e bloqueios
+4083: **Files:**
+4084: - Create: `src/frontend/src/lib/datas.ts`, `src/frontend/src/api/agenda.ts`, `src/frontend/src/api/mocks/regrasAgenda.ts`, `src/frontend/src/api/mocks/agenda.ts`, `src/frontend/src/features/agenda/AgendarLeilaoCard.tsx`, `src/frontend/src/features/agenda/AgendaPage.tsx`, `src/frontend/src/features/agenda/Calendario.tsx`, `src/frontend/src/features/agenda/BloqueiosCard.tsx`
+4085: - Modify: `src/frontend/src/app/rotas.tsx`, `src/frontend/src/api/mocks/handlers.ts`, `src/frontend/src/features/processos/ProcessoDetalhePage.tsx`
+4086: - Test: `src/frontend/src/lib/datas.test.ts`, `src/frontend/src/api/mocks/regrasAgenda.test.ts`, `src/frontend/src/features/agenda/AgendarLeilaoCard.test.tsx`, `src/frontend/src/features/agenda/AgendaPage.test.tsx`
+4087: 
+4088: **Interfaces:**
+4089: - Consumes: `api`, `mensagemErro` (Task 1); `formatarDataHora`, `formatarData` (Task 1); `db`, `novoId`, `leilaoAtivo`, `toLeilaoOut`, `LeilaoMock`, `logar` (Task 1); `FERIADOS`, `feriadosDoAno`, `Feriado` (Task 1); `erro`, `exigirSessao`, `exigirAdmin` (Task 1); `useUsuario` (Task 2); `Card`, `Botao`, `Field`, `Alerta` (Task 2); `StatusBadge` (Task 3); `chavesProcessos` (Task 4); `ProcessoDetalhePage` (Task 5).
+4090: - Produces:
+4091:   - `src/lib/datas.ts`: `dataLocal(d: Date): string`, `deDataLocal(iso: string): Date`, `inicioDoDia(d)`, `adicionarDias(d, n)`, `comHorario(d, hora, minuto)`, `inicioDoMes(d)`, `fimDoMes(d)`, `adicionarMeses(d, n)`, `diasDoMes(mes: Date): Date[]`.
+4092:   - `src/api/agenda.ts`: `chavesAgenda = { raiz, leiloes(inicio, fim), sugestao, bloqueios, feriados(ano) }`, `listarLeiloes(filtro?: { inicio: string; fim: string }): Promise<LeilaoOut[]>`, `obterSugestao(): Promise<SugestaoOut>`, `agendarLeilao(dados: LeilaoCreate): Promise<LeilaoOut>`, `cancelarLeilao(id): Promise<void>`, `listarBloqueios(): Promise<BloqueioOut[]>`, `criarBloqueio(dados: BloqueioCreate): Promise<BloqueioOut>`, `removerBloqueio(id): Promise<void>`, `listarFeriados(ano: number): Promise<FeriadoOut[]>`.
+4093:   - `src/api/mocks/regrasAgenda.ts` (spec frontend §7): `type DiaMarcado = { data: string; motivo: string }`, `HORARIO_LEILAO = { hora: 10, minuto: 0 }`, `candidatos(hoje: Date): Date[]`, `motivoIndisponivel(d: Date, bloqueios: readonly DiaMarcado[], feriados: readonly DiaMarcado[]): string | null`, `validarDataManual(d: Date, hoje: Date, bloqueios, feriados): string | null`, `montarDatas(d: Date): SugestaoOut`, `sugerirDatas(hoje: Date, bloqueios, feriados): SugestaoOut | null`.
+4094:   - `src/api/mocks/agenda.ts`: `const agendaHandlers: HttpHandler[]`.
+4095:   - `features/agenda/AgendarLeilaoCard.tsx`: `AgendarLeilaoCard({ processo }: { processo: ProcessoDetalheOut })`.
+4096:   - `features/agenda/Calendario.tsx`: `Calendario({ mes, leiloes, bloqueios, feriados }: { mes: Date; leiloes: LeilaoOut[]; bloqueios: BloqueioOut[]; feriados: FeriadoOut[] })`.
+4097:   - `features/agenda/AgendaPage.tsx`: `AgendaPage()`. `features/agenda/BloqueiosCard.tsx`: `BloqueiosCard()`.
+4098: 
+4099: Mensagens de erro de data são as da spec backend §3, literais: `Data fora da janela de 30 a 45 dias` · `Data não é dia útil` · `Data é feriado: <nome>` · `Data bloqueada: <motivo>` · `Segundo leilão (<data>) indisponível: <motivo>` (`<data>` em `dd/mm/aaaa`). Não há colisão entre leilões (visão geral §2 "Agenda": sem limite por dia).
+4100: 
+5371: ### Task 7: Editais — gerar, visualizar (markdown seguro), editar, baixar .md/.docx, regenerar
+5373: **Files:**
+5374: - Create: `src/frontend/src/api/editais.ts`, `src/frontend/src/features/editais/EditalCard.tsx`, `src/frontend/src/api/mocks/editais.ts`
+5375: - Modify: `src/frontend/src/api/mocks/handlers.ts`, `src/frontend/src/features/processos/ProcessoDetalhePage.tsx`
+5376: - Test: `src/frontend/src/features/editais/EditalCard.test.tsx`
+5377: 
+5378: **Interfaces:**
+5379: - Consumes: `api`, `mensagemErro` (Task 1); `formatarDataHora`, `formatarDinheiro` (Task 1); `db`, `novoId`, `LeilaoMock`, `ProcessoMock`, `logar` (Task 1); `erro`, `exigirSessao` (Task 1); `Card`, `Botao`, `Alerta` (Task 2); `AvisoIA` (Task 5); `chavesProcessos` (Task 4); `server` (Task 1).
+5380: - Produces:
+5381:   - `src/api/editais.ts`: `chavesEditais = { detalhe: (id: string) => ['editais', id] as const }`, `gerarEdital(leilao_id: string): Promise<EditalOut>`, `obterEdital(id: string): Promise<EditalOut>`, `atualizarEdital(id: string, conteudo_markdown: string): Promise<EditalOut>`, `urlDownloadEdital(id: string, formato: 'md' | 'docx'): string` (→ `/api/editais/${id}/download?formato=${formato}`).
+5382:   - `features/editais/EditalCard.tsx`: `EditalCard({ processo }: { processo: ProcessoDetalheOut })`.
+5383:   - `src/api/mocks/editais.ts`: `gerarMarkdownEdital(processo: ProcessoMock, leilao: LeilaoMock): string`, `const editaisHandlers: HttpHandler[]` (`POST /editais`, `GET /editais/:id`, `PUT /editais/:id`, `GET /editais/:id/download?formato=`).
+5384: 
+5863: ### Task 8: Marketing — enviar planilha e listar envios
+5865: **Files:**
+5866: - Create: `src/frontend/src/api/marketing.ts`, `src/frontend/src/features/marketing/EnviarMarketingCard.tsx`, `src/frontend/src/features/marketing/MarketingPage.tsx`, `src/frontend/src/api/mocks/marketing.ts`
+5867: - Modify: `src/frontend/src/app/rotas.tsx`, `src/frontend/src/api/mocks/handlers.ts`, `src/frontend/src/features/processos/ProcessoDetalhePage.tsx`
+5868: - Test: `src/frontend/src/features/marketing/EnviarMarketingCard.test.tsx`, `src/frontend/src/features/marketing/MarketingPage.test.tsx`
+5869: 
+5870: **Interfaces:**
+5871: - Consumes: `api`, `mensagemErro` (Task 1); `formatarDataHora`, `ouTraco` (Task 1); `db`, `novoId`, `toLeilaoOut`, `toEnvioOut`, `EnvioMock`, `MARKETING_EMAILS`, `logar` (Task 1); `erro`, `exigirSessao` (Task 1); `Card`, `Botao`, `Alerta` (Task 2); `StatusBadge` (Task 3); `server` (Task 1).
+5872: - Produces:
+5873:   - `src/api/marketing.ts`: `chavesMarketing = { envios: ['marketing', 'envios'] as const }`, `URL_PLANILHA = '/api/marketing/planilha'`, `listarEnvios(): Promise<EnvioOut[]>`, `enviarParaMarketing(leilao_id: string): Promise<EnvioOut>`.
+5874:   - `features/marketing/EnviarMarketingCard.tsx`: `EnviarMarketingCard({ processo }: { processo: ProcessoDetalheOut })`.
+5875:   - `features/marketing/MarketingPage.tsx`: `MarketingPage()`.
+5876:   - `src/api/mocks/marketing.ts`: `const marketingHandlers: HttpHandler[]` (`GET/POST /marketing/envios`, `GET /marketing/planilha`).
+5877: 
+5878: `EnvioOut` segue a spec backend §2 sem mudança: `{ id, leilao_id, numero_processo, destinatarios, enviado_em, status, erro }`.
+5879: 
+6254: ### Task 9: Fechamento — 404, ErrorBoundary, verificação completa, build da imagem e checklist manual
+6256: **Files:**
+6257: - Create: `src/frontend/src/app/NaoEncontradaPage.tsx`, `src/frontend/src/components/ErrorBoundary.tsx`
+6258: - Modify: `src/frontend/src/app/rotas.tsx`, `src/frontend/src/main.tsx`
+6259: - Test: `src/frontend/src/app/rotas.test.tsx`, `src/frontend/src/components/ErrorBoundary.test.tsx`
+6260: 
+6261: **Interfaces:**
+6262: - Consumes: `rotas` (Task 2), `renderComRouter` (Task 2), `logar` (Task 1).
+6263: - Produces: `NaoEncontradaPage()`, `ErrorBoundary({ children }: { children: ReactNode })`.
+6264: 

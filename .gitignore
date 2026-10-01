@@ -9,3 +9,4 @@ src/media
 src/e2e/playwright-report
 src/e2e/test-results
 prompts/sessoes/**/*.jsonl
+.claude/worktrees

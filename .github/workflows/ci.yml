@@ -62,7 +62,7 @@ jobs:
         working-directory: src/frontend
     steps:
       - uses: actions/checkout@v5
-      - uses: pnpm/action-setup@v4
+      - uses: pnpm/action-setup@v6
         with:
           package_json_file: src/frontend/package.json
       - uses: actions/setup-node@v5
@@ -83,7 +83,7 @@ jobs:
         working-directory: src/worker
     steps:
       - uses: actions/checkout@v5
-      - uses: pnpm/action-setup@v4
+      - uses: pnpm/action-setup@v6
         with:
           package_json_file: src/worker/package.json
       - uses: actions/setup-node@v5
@@ -111,7 +111,7 @@ jobs:
         working-directory: src/backend
       - run: uv run --with pip-audit pip-audit
         working-directory: src/backend
-      - uses: pnpm/action-setup@v4
+      - uses: pnpm/action-setup@v6
         with:
           package_json_file: src/frontend/package.json
       - uses: actions/setup-node@v5
@@ -142,7 +142,7 @@ jobs:
           echo "frontend nao respondeu em 5 minutos"
           docker compose -f src/docker-compose.yml logs frontend nginx
           exit 1
-      - uses: pnpm/action-setup@v4
+      - uses: pnpm/action-setup@v6
         with:
           package_json_file: src/e2e/package.json
       - uses: actions/setup-node@v5

@@ -35,7 +35,7 @@ jobs:
           APP_ENV: prod
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           DATABASE_URL_MIGRATOR: ${{ secrets.DATABASE_URL_MIGRATOR }}
-      - uses: pnpm/action-setup@v4
+      - uses: pnpm/action-setup@v6
         with:
           package_json_file: src/worker/package.json
       - uses: actions/setup-node@v5

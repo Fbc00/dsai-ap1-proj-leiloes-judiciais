@@ -164,22 +164,31 @@ docker run --rm -i -e PGPASSWORD="$SENHA_OWNER" postgres:17-alpine \
 
 ## Saída do cloc
 
-**Resumo:** 174 arquivos · 9.826 linhas de código (TypeScript 5.027 · Python 4.055 · demais 744) · 1.690 em branco · 49 de comentário.
+**Resumo:** 175 arquivos · 9.929 linhas de código · 1.690 em branco · 49 de comentário.
 
-Só arquivos versionados em `src/` (sem lockfiles nem arquivos gerados), da raiz do repositório:
+| Parte | Arquivos | Código |
+|---|---:|---:|
+| `src/backend` | 70 | 4.456 |
+| `src/frontend` | 91 | 4.883 |
+| `src/worker` (Cloudflare) | 8 | 450 |
+| `src/e2e` | 3 | 67 |
+| `src/` raiz (compose, scripts de roles do banco) | 3 | 73 |
+| **Total** | **175** | **9.929** |
+
+Arquivos versionados em `src/` (backend, frontend, worker, e2e e infra; sem lockfiles nem arquivos gerados), da raiz do repositório:
 
 ```bash
-cloc --vcs=git src --not-match-f='pnpm-lock.yaml|uv.lock|mockServiceWorker.js'
+cloc --vcs=git src --force-lang=JSON,jsonc --not-match-f='pnpm-lock.yaml|uv.lock|mockServiceWorker.js'
 ```
 
 ```
-github.com/AlDanial/cloc v 2.04  T=0.25 s (686.1 files/s, 45602.8 lines/s)
+github.com/AlDanial/cloc v 2.04  T=0.19 s (926.1 files/s, 61744.3 lines/s)
 -------------------------------------------------------------------------------
 Language                     files          blank        comment           code
 -------------------------------------------------------------------------------
 TypeScript                      87            507              1           5027
 Python                          62           1021             48           4055
-JSON                            10              0              0            285
+JSON                            11              0              0            388
 Markdown                         2             36              0            127
 Jinja Template                   1             97              0            116
 YAML                             3              4              0             63
@@ -192,6 +201,6 @@ Mako                             1              6              0             12
 SQL                              1              0              0              6
 CSS                              1              0              0              1
 -------------------------------------------------------------------------------
-SUM:                           174           1690             49           9826
+SUM:                           175           1690             49           9929
 -------------------------------------------------------------------------------
 ```

@@ -164,43 +164,34 @@ docker run --rm -i -e PGPASSWORD="$SENHA_OWNER" postgres:17-alpine \
 
 ## Saída do cloc
 
-**Resumo:** 175 arquivos · 9.929 linhas de código · 1.690 em branco · 49 de comentário.
+**Resumo:** 178 arquivos · 17.972 linhas de código · 1.696 em branco · 8.131 de comentário.
 
-| Parte | Arquivos | Código |
-|---|---:|---:|
-| `src/backend` | 70 | 4.456 |
-| `src/frontend` | 91 | 4.883 |
-| `src/worker` (Cloudflare) | 8 | 450 |
-| `src/e2e` | 3 | 67 |
-| `src/` raiz (compose, scripts de roles do banco) | 3 | 73 |
-| **Total** | **175** | **9.929** |
-
-Arquivos versionados em `src/` (backend, frontend, worker, e2e e infra; sem lockfiles nem arquivos gerados), da raiz do repositório:
+Da raiz do repositório:
 
 ```bash
-cloc --vcs=git src --force-lang=JSON,jsonc --not-match-f='pnpm-lock.yaml|uv.lock|mockServiceWorker.js'
+cloc src --exclude-dir=node_modules,.venv,dist,__pycache__ --not-match-f='pnpm-lock.yaml|uv.lock|mockServiceWorker.js'
 ```
 
 ```
-github.com/AlDanial/cloc v 2.04  T=0.19 s (926.1 files/s, 61744.3 lines/s)
+github.com/AlDanial/cloc v 2.04  T=0.17 s (1028.3 files/s, 160600.6 lines/s)
 -------------------------------------------------------------------------------
 Language                     files          blank        comment           code
 -------------------------------------------------------------------------------
-TypeScript                      87            507              1           5027
+TypeScript                      88            509           8083          13153
 Python                          62           1021             48           4055
-JSON                            11              0              0            388
-Markdown                         2             36              0            127
+JSON                            11              0              0            289
+Markdown                         3             39              0            132
 Jinja Template                   1             97              0            116
 YAML                             3              4              0             63
 TOML                             1              6              0             45
+Dockerfile                       2              3              0             39
 INI                              1              8              0             31
-Dockerfile                       1              2              0             28
 Bourne Shell                     2              3              0             18
 HTML                             1              0              0             12
 Mako                             1              6              0             12
 SQL                              1              0              0              6
 CSS                              1              0              0              1
 -------------------------------------------------------------------------------
-SUM:                           175           1690             49           9929
+SUM:                           178           1696           8131          17972
 -------------------------------------------------------------------------------
 ```

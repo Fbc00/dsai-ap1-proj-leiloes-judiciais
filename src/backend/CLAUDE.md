@@ -49,6 +49,8 @@ Banco de teste `leiloes_test` e criado pelo `src/docker/postgres/init/01-roles.s
 - Dinheiro = `Decimal`, serializado como string `"1234.56"`. Nunca float.
 - JSONB (`checklists.dados`, `relatorios.dados`) sempre validado por schema Pydantic na entrada e na saida.
 - SQL: ORM ou `text()` com `:param`. **f-string/concatenacao em SQL = bug.**
+- RLS em todas as tabelas (migration `0007`). **Tabela nova**: na mesma migration, `ALTER TABLE <t> ENABLE ROW LEVEL SECURITY` + `CREATE POLICY acesso_app ON <t> FOR ALL TO leiloes_app USING (true) WITH CHECK (true)`. `tests/test_migracoes.py` roda as migrations num banco descartavel e falha se faltar.
+- Supabase (opcional, por env): so Postgres, Supavisor session mode, `?ssl=require`. Roles via `src/docker/supabase/01-roles.sql`. Dev/CI/testes seguem no Postgres local.
 
 ## Seguranca (spec backend §6)
 

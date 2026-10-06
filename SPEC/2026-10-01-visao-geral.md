@@ -32,7 +32,7 @@ Fluxo na UI: Login → Processos (upload) → Detalhe do processo (analisar → 
 | Frontend | React 19 + **TypeScript obrigatório** (`strict: true`, `noUncheckedIndexedAccess`, `any` proibido, nenhum `.js/.jsx` em `src/`) + Vite, `pnpm`. React Router, TanStack Query, Tailwind CSS v4. Mock de API com MSW (mesmos handlers em browser e Vitest). Lint + format: **Biome** (`biome.json` com `linter.rules.recommended`, indent 2 espaços, aspas simples, `organizeImports`; scripts `lint` = `biome check .`, `lint:fix` = `biome check --write .`). Sem ESLint/Prettier. |
 | Execução | **Sempre via Docker.** `docker compose` em `src/` pra dev e prod. Comandos de uv/pnpm rodam dentro dos containers (`docker compose exec backend uv run ...`, `docker compose exec frontend pnpm ...`). CI é a única exceção (roda uv/pnpm direto no runner, por cache e velocidade). |
 | Etapas | **Duas etapas independentes, em qualquer ordem.** FRONTEND: só `src/frontend/**`, roda 100% em mock. BACKEND: `src/backend/**` + `src/e2e/**` + toda a infra (`src/docker-compose*.yml`, `src/nginx/`, `src/docker/`, `src/.env.example`, `.github/`, `.gitignore`). Nenhum arquivo é tocado pelas duas etapas. |
-| Banco | PostgreSQL 16. Duas roles: `leiloes_owner` (migrations) e `leiloes_app` (DML only). |
+| Banco | PostgreSQL 16 local (dev/CI); Supabase (Postgres gerenciado, plano Free) apontado por env. Duas roles: `leiloes_owner` (migrations) e `leiloes_app` (DML only). RLS em todas as tabelas. |
 | LLM | Interface `app/llm/base.py` com driver escolhido por `LLM_PROVIDER`: `fake` (fixtures, dev/testes) e `anthropic` (SDK `anthropic`, `messages.parse` com schema Pydantic, modelo `ANTHROPIC_MODEL`, default `claude-opus-5-5`). **A entrega roda com `fake`**; `anthropic` é opcional, ativado por env. Driver Ollama fica pra depois pela mesma interface. |
 | Bens | **Só imóveis** no v1 (schema `BemPenhorado` é o do checklist de imóveis). Veículos = outro schema, depois. |
 | PDF | `pypdf`. Premissa: PDF do PJe tem camada de texto. Sem texto → processo em `erro`. Texto cortado em `LLM_MAX_CHARS` (default 600000). |
@@ -69,6 +69,7 @@ Fluxo na UI: Login → Processos (upload) → Detalhe do processo (analisar → 
     ├── docker-compose.prod.yml   prod
     ├── .env.example
     ├── docker/postgres/init/01-roles.sh
+    ├── docker/supabase/01-roles.sql
     ├── nginx/dev.conf  nginx/prod.conf
     ├── backend/                  FastAPI (ver spec backend §Layout)
     ├── frontend/                 React + Vite (ver spec frontend §Layout)

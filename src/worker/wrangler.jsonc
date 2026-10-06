@@ -1,0 +1,103 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "dsai-ap1-proj-leiloes-judiciais",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-10-06",
+  "observability": {
+    "enabled": true
+  },
+  "build": {
+    "command": "sh build-frontend.sh",
+    "watch_dir": "../frontend/src"
+  },
+  "assets": {
+    "directory": ".wrangler/frontend/dist",
+    "binding": "ASSETS",
+    "not_found_handling": "single-page-application",
+    "run_worker_first": true
+  },
+  "containers": [
+    {
+      "class_name": "Backend",
+      "scheduling_policy": "durable_object",
+      "images": {
+        "base": {
+          "dockerfile": "../backend/Dockerfile"
+        }
+      }
+    }
+  ],
+  "durable_objects": {
+    "bindings": [
+      {
+        "name": "BACKEND",
+        "class_name": "Backend"
+      }
+    ]
+  },
+  "exports": {
+    "Backend": {
+      "type": "durable-object",
+      "storage": "sqlite"
+    }
+  },
+  "ratelimits": [
+    {
+      "name": "LOGIN_LIMITER",
+      "namespace_id": "1001",
+      "simple": {
+        "limit": 5,
+        "period": 60
+      }
+    }
+  ],
+  "vars": {
+    "APP_ENV": "prod",
+    "LOG_LEVEL": "INFO",
+    "COOKIE_SECURE": "true",
+    "LLM_PROVIDER": "anthropic",
+    "EMAIL_BACKEND": "smtp",
+    "SMTP_PORT": "587",
+    "SMTP_TLS": "true"
+  },
+  "secrets": {
+    "required": [
+      "DATABASE_URL",
+      "ANTHROPIC_API_KEY",
+      "SMTP_HOST",
+      "SMTP_USER",
+      "SMTP_PASSWORD",
+      "EMAIL_FROM",
+      "MARKETING_EMAILS"
+    ]
+  },
+  "previews": {
+    "durable_objects": {
+      "bindings": [
+        {
+          "name": "BACKEND",
+          "class_name": "Backend"
+        }
+      ]
+    },
+    "ratelimits": [
+      {
+        "name": "LOGIN_LIMITER",
+        "namespace_id": "1002",
+        "simple": {
+          "limit": 5,
+          "period": 60
+        }
+      }
+    ],
+    "vars": {
+      "APP_ENV": "prod",
+      "LOG_LEVEL": "INFO",
+      "COOKIE_SECURE": "true",
+      "LLM_PROVIDER": "fake",
+      "EMAIL_BACKEND": "file",
+      "SMTP_PORT": "587",
+      "SMTP_TLS": "true"
+    }
+  }
+}

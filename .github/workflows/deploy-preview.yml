@@ -1,0 +1,100 @@
+name: Deploy preview
+
+on:
+  workflow_dispatch:
+    inputs:
+      acao:
+        description: Criar/atualizar ou remover a Preview
+        type: choice
+        options: [deploy, remover]
+        default: deploy
+      nome:
+        description: Nome da Preview (vazio = nome da branch)
+        type: string
+        required: false
+
+concurrency:
+  group: deploy-preview-${{ github.ref_name }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    if: inputs.acao == 'deploy'
+    runs-on: ubuntu-latest
+    environment: preview
+    steps:
+      - uses: actions/checkout@v5
+      - name: Nome da Preview
+        env:
+          NOME: ${{ inputs.nome }}
+        run: |
+          nome="${NOME:-$GITHUB_REF_NAME}"
+          nome=$(printf '%s' "$nome" | tr '[:upper:]' '[:lower:]' | sed -E 's/[^a-z0-9]+/-/g' | cut -c1-24 | sed -E 's/^-+//; s/-+$//')
+          test -n "$nome"
+          echo "PREVIEW_NAME=$nome" >> "$GITHUB_ENV"
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+          cache-dependency-glob: src/backend/uv.lock
+      - run: uv python install 3.12
+      - run: uv sync --frozen --no-dev
+        working-directory: src/backend
+      - name: Migrations
+        run: uv run alembic upgrade head
+        working-directory: src/backend
+        env:
+          APP_ENV: prod
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          DATABASE_URL_MIGRATOR: ${{ secrets.DATABASE_URL_MIGRATOR }}
+      - uses: pnpm/action-setup@v4
+        with:
+          package_json_file: src/worker/package.json
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: |
+            src/frontend/pnpm-lock.yaml
+            src/worker/pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile
+        working-directory: src/worker
+      - name: Wrangler preview
+        run: pnpm run deploy:preview --name "$PREVIEW_NAME" --message "$GITHUB_SHA"
+        working-directory: src/worker
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+
+  remover:
+    if: inputs.acao == 'remover'
+    runs-on: ubuntu-latest
+    environment: preview
+    steps:
+      - uses: actions/checkout@v5
+      - name: Nome da Preview
+        env:
+          NOME: ${{ inputs.nome }}
+        run: |
+          nome="${NOME:-$GITHUB_REF_NAME}"
+          nome=$(printf '%s' "$nome" | tr '[:upper:]' '[:lower:]' | sed -E 's/[^a-z0-9]+/-/g' | cut -c1-24 | sed -E 's/^-+//; s/-+$//')
+          test -n "$nome"
+          echo "PREVIEW_NAME=$nome" >> "$GITHUB_ENV"
+      - uses: pnpm/action-setup@v4
+        with:
+          package_json_file: src/worker/package.json
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: src/worker/pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile
+        working-directory: src/worker
+      - name: Wrangler preview delete
+        run: pnpm exec wrangler preview delete --name "$PREVIEW_NAME" --skip-confirmation
+        working-directory: src/worker
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}

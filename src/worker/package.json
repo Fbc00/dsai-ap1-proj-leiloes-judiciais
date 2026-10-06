@@ -1,0 +1,21 @@
+{
+  "name": "leiloes-worker",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "packageManager": "pnpm@12.8.1",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy:prod": "wrangler deploy",
+    "deploy:preview": "wrangler preview",
+    "check": "wrangler deploy --dry-run",
+    "types": "wrangler types",
+    "typecheck": "wrangler types && tsc --noEmit",
+    "test": "vitest run --dir test"
+  },
+  "devDependencies": {
+    "typescript": "7.0.2",
+    "vitest": "5.0.3",
+    "wrangler": "4.147.0"
+  }
+}

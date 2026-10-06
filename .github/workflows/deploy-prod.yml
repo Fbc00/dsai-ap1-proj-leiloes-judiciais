@@ -1,0 +1,65 @@
+name: Deploy prod
+
+on:
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-prod
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  ci:
+    if: github.ref == 'refs/heads/main'
+    uses: ./.github/workflows/ci.yml
+
+  deploy:
+    needs: ci
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/checkout@v5
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+          cache-dependency-glob: src/backend/uv.lock
+      - run: uv python install 3.12
+      - run: uv sync --frozen --no-dev
+        working-directory: src/backend
+      - name: Migrations
+        run: uv run alembic upgrade head
+        working-directory: src/backend
+        env:
+          APP_ENV: prod
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          DATABASE_URL_MIGRATOR: ${{ secrets.DATABASE_URL_MIGRATOR }}
+      - uses: pnpm/action-setup@v4
+        with:
+          package_json_file: src/worker/package.json
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: |
+            src/frontend/pnpm-lock.yaml
+            src/worker/pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile
+        working-directory: src/worker
+      - name: Wrangler deploy
+        run: pnpm run deploy:prod
+        working-directory: src/worker
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      - name: Smoke test
+        env:
+          APP_URL: ${{ vars.APP_URL }}
+        run: |
+          for _ in $(seq 1 30); do
+            curl -fsS "$APP_URL/api/health" && exit 0
+            sleep 10
+          done
+          echo "health nao respondeu em 5 minutos"
+          exit 1

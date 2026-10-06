@@ -10,3 +10,6 @@ src/e2e/playwright-report
 src/e2e/test-results
 prompts/sessoes/**/*.jsonl
 .claude/worktrees
+src/worker/.wrangler
+src/worker/.dev.vars*
+src/worker/worker-configuration.d.ts

@@ -20,15 +20,15 @@ README.md        URL, dupla, stack, como rodar, ferramentas, modelos, cloc
 SPEC/            uma spec por parte, datada · referencias/ (docs do dominio)
 prompts/planos/  planos de implementacao · prompts/sessoes/ prompts e respostas das sessoes de IA, dados sensiveis mascarados (hook automatico)
 .claude/         settings.json (hook Stop) · hooks/exportar-sessao.py
-.github/         ci.yml (PR: ruff, pytest, biome, vitest, build imagens, audit) · deploy.yml (main → GHCR → SSH) · dependabot.yml
-src/             aplicacao: docker-compose*.yml, .env.example, docker/, nginx/, backend/, frontend/
+.github/         ci.yml (PR: ruff, pytest, biome, vitest, worker + dry-run, audit) · deploy-preview.yml (manual → wrangler preview) · deploy-prod.yml (manual → migrations → wrangler deploy) · dependabot.yml
+src/             aplicacao: docker-compose*.yml, .env.example, docker/, nginx/, backend/, frontend/, worker/ (Cloudflare prod)
 ```
 
 Um dominio = uma pasta em `src/backend/app/<dominio>/` e uma em `src/frontend/src/features/<dominio>/`:
 `security` (auth) · `processos` · `agenda` · `editais` · `marketing`.
 
 **Duas etapas de implementacao, independentes.** FRONTEND toca so `src/frontend/**` (roda em mock).
-BACKEND toca `src/backend/**` + `src/e2e/**` + toda infra (compose, nginx, docker/, .github/, .gitignore). Nenhum arquivo e das duas.
+BACKEND toca `src/backend/**` + `src/e2e/**` + toda infra (compose, nginx, docker/, worker/, .github/, .gitignore). Nenhum arquivo e das duas.
 
 Dois perfis de usuario: `admin` (tudo + apagar processo, cancelar leilao, bloqueios, usuarios) e `operador`. Backend nega (`403`); frontend so esconde botao.
 
@@ -42,7 +42,6 @@ docker compose exec backend uv run python -m app.cli criar-usuario admin --nome 
 docker compose exec backend uv run pytest tests/test_agenda.py      # teste de uma feature
 docker compose exec frontend pnpm test -- src/features/agenda
 VITE_API_MOCK=true docker compose up frontend nginx                 # so frontend, sem backend
-docker compose -f docker-compose.prod.yml up --build -d
 ```
 
 ## Mentalidade

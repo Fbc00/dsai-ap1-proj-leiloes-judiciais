@@ -68,7 +68,7 @@ Deploy automático no push pra `main` (`.github/workflows/deploy.yml`: CI → mi
 
 3. Primeiro usuário: `criar-usuario` com o `src/.env` apontando pro Supabase (passo 4 da seção do Supabase).
 
-Rodar o Worker local (Docker ligado, frontend buildado em `src/frontend/dist`, secrets em `src/worker/.dev.vars`):
+Rodar o Worker local (Docker ligado, secrets em `src/worker/.dev.vars`). O `wrangler` builda uma cópia do frontend em `src/worker/.wrangler/frontend` antes de `dev`/`deploy`/`preview` (`build-frontend.sh`), sem tocar `src/frontend/node_modules`.
 
 ```bash
 cd src/worker && pnpm install && pnpm test && pnpm dev     # http://localhost:8787

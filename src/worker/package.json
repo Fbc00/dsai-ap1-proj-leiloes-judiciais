@@ -5,10 +5,9 @@
   "type": "module",
   "packageManager": "pnpm@12.8.1",
   "scripts": {
-    "build:frontend": "pnpm --dir ../frontend build",
     "dev": "wrangler dev",
-    "deploy": "pnpm build:frontend && wrangler deploy",
-    "check": "pnpm build:frontend && wrangler deploy --dry-run",
+    "deploy": "wrangler deploy",
+    "check": "wrangler deploy --dry-run",
     "types": "wrangler types",
     "typecheck": "wrangler types && tsc --noEmit",
     "test": "vitest run"

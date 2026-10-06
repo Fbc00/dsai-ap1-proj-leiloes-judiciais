@@ -114,8 +114,6 @@ jobs:
             src/frontend/pnpm-lock.yaml
             src/worker/pnpm-lock.yaml
       - run: pnpm install --frozen-lockfile
-        working-directory: src/frontend
-      - run: pnpm install --frozen-lockfile
       - run: pnpm typecheck
       - run: pnpm test
       - run: pnpm check

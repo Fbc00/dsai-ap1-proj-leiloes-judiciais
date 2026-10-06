@@ -19,7 +19,7 @@ Recebe um processo judicial em PDF e automatiza o caminho até o leilão: preenc
 | Backend | Python 3.12 · FastAPI (ASGI/uvicorn) · SQLAlchemy 2.0 async · Alembic · PostgreSQL 16 (local) ou Supabase · `uv` · Ruff |
 | Frontend | React 19 · TypeScript · Vite · React Router · TanStack Query · Tailwind CSS v4 · MSW · Vitest · `pnpm` · Biome |
 | LLM | Interface com driver trocável: `fake` (fixtures, usado na entrega) e `anthropic` (Claude, opcional) |
-| Infra | Docker Compose (dev e prod) · nginx (proxy + estático) · backup diário · GitHub Actions (CI + e2e Playwright + CD) · GHCR |
+| Infra | Docker Compose + nginx (dev) · Cloudflare Workers Static Assets + Containers (prod) · GitHub Actions (CI + e2e Playwright + CD) |
 
 Detalhes e decisões: [`SPEC/`](SPEC/).
 
@@ -52,10 +52,37 @@ docker compose exec frontend pnpm test               # UI + MSW
 cd e2e && pnpm install && pnpm exec playwright install chromium && pnpm test   # fluxo completo contra o compose
 ```
 
-Produção (um servidor, imagens do GHCR):
+## Produção (Cloudflare)
+
+Um Worker (`src/worker/`) serve o build do frontend e encaminha `/api/*` pro container do backend (`src/backend/Dockerfile`), tudo na mesma origem. Banco no Supabase (seção abaixo). Exige plano Workers Paid. Detalhes: [`SPEC/2026-10-01-infra.md` §10](SPEC/2026-10-01-infra.md).
+
+Deploy automático no push pra `main` (`.github/workflows/deploy.yml`: CI → migrations → `wrangler deploy` → `/api/health`). Configuração única:
+
+1. Secrets do repositório no GitHub: `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID`, `DATABASE_URL`, `DATABASE_URL_MIGRATOR`. Variable: `APP_URL`.
+2. Secrets do Worker (o valor é digitado no prompt):
+
+   ```bash
+   cd src/worker && pnpm install
+   for s in DATABASE_URL ANTHROPIC_API_KEY SMTP_HOST SMTP_USER SMTP_PASSWORD EMAIL_FROM MARKETING_EMAILS; do pnpm exec wrangler secret put "$s"; done
+   ```
+
+3. Primeiro usuário: `criar-usuario` com o `src/.env` apontando pro Supabase (passo 4 da seção do Supabase).
+
+Rodar o Worker local (Docker ligado, frontend buildado em `src/frontend/dist`, secrets em `src/worker/.dev.vars`):
 
 ```bash
-cd src && docker compose -f docker-compose.prod.yml up -d
+cd src/worker && pnpm install && pnpm test && pnpm dev     # http://localhost:8787
+cd ../e2e && E2E_BASE_URL=http://localhost:8787 pnpm test
+```
+
+Os PDFs ficam no disco do container, que é efêmero: somem quando ele dorme (2h sem uso) ou a versão muda.
+
+Rollback: `cd src/worker && pnpm exec wrangler rollback`.
+
+Alternativa self-hosted (um servidor com Docker Compose):
+
+```bash
+cd src && docker compose -f docker-compose.prod.yml up -d --build
 ```
 
 ## Banco no Supabase
@@ -119,7 +146,7 @@ docker run --rm -i -e PGPASSWORD="$SENHA_OWNER" postgres:17-alpine \
   -d "host=aws-<n>-<regiao>.pooler.supabase.com port=5432 dbname=postgres user=leiloes_owner.<ref> sslmode=require" < leiloes-<data>.dump
 ```
 
-## Backup e restore (produção)
+## Backup e restore (self-hosted)
 
 O serviço `backup` do `src/docker-compose.prod.yml` grava diariamente em um volume `backups`:
 `pg-<data>.dump` (`pg_dump -Fc`) e `media-<data>.tgz` (PDFs e e-mails), retenção `BACKUP_RETENCAO_DIAS` (default 7).
@@ -142,13 +169,13 @@ Restaurar a mídia:
 cd src && docker compose -f docker-compose.prod.yml run --rm --no-deps --entrypoint tar -v "$PWD/media-<data>.tgz:/b.tgz:ro" backend xzf /b.tgz -C /data
 ```
 
-Rollback de versão: `cd src && IMAGE_TAG=sha-<anterior> docker compose -f docker-compose.prod.yml up -d`.
+Rollback de versão: `git checkout <commit anterior>` e `cd src && docker compose -f docker-compose.prod.yml up -d --build`.
 
 ## Ferramentas
 
 - **Claude Code** com o plugin **superpowers** (brainstorming → spec → planos → execução com TDD e revisão por subagentes). Sessões exportadas automaticamente pra [`prompts/sessoes/claude-code/`](prompts/sessoes/claude-code/) por hook (`.claude/settings.json`): só prompts do usuário e respostas do Claude, em Markdown, com dados sensíveis mascarados.
 - Planos de implementação em [`prompts/planos/`](prompts/planos/); specs em [`SPEC/`](SPEC/).
-- `uv` (Python), `pnpm` (Node), Ruff e Biome (lint/format), MSW (mock de API), Vitest/pytest, Docker Compose, GitHub Actions, Dependabot.
+- `uv` (Python), `pnpm` (Node), Ruff e Biome (lint/format), MSW (mock de API), Vitest/pytest, Docker Compose, Wrangler (Cloudflare), GitHub Actions, Dependabot.
 
 ## Modelos
 

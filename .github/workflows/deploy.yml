@@ -15,74 +15,53 @@ jobs:
   ci:
     uses: ./.github/workflows/ci.yml
 
-  publicar:
-    needs: ci
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      packages: write
-    steps:
-      - uses: actions/checkout@v5
-      - uses: docker/setup-buildx-action@v3
-      - uses: docker/login-action@v3
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-      - id: meta_backend
-        uses: docker/metadata-action@v5
-        with:
-          images: ghcr.io/${{ github.repository_owner }}/leiloes-backend
-          tags: |
-            type=sha,prefix=sha-,format=short
-            type=raw,value=latest
-      - uses: docker/build-push-action@v6
-        with:
-          context: src/backend
-          target: prod
-          push: true
-          tags: ${{ steps.meta_backend.outputs.tags }}
-          labels: ${{ steps.meta_backend.outputs.labels }}
-          cache-from: type=gha,scope=backend
-          cache-to: type=gha,mode=max,scope=backend
-      - id: meta_nginx
-        uses: docker/metadata-action@v5
-        with:
-          images: ghcr.io/${{ github.repository_owner }}/leiloes-nginx
-          tags: |
-            type=sha,prefix=sha-,format=short
-            type=raw,value=latest
-      - uses: docker/build-push-action@v6
-        with:
-          context: src
-          file: src/frontend/Dockerfile
-          push: true
-          tags: ${{ steps.meta_nginx.outputs.tags }}
-          labels: ${{ steps.meta_nginx.outputs.labels }}
-          cache-from: type=gha,scope=nginx
-          cache-to: type=gha,mode=max,scope=nginx
-
   deploy:
-    needs: publicar
+    needs: ci
     runs-on: ubuntu-latest
     environment: production
     steps:
-      - uses: appleboy/ssh-action@v1
-        env:
-          DEPLOY_PATH: ${{ secrets.DEPLOY_PATH }}
-          GITHUB_SHA: ${{ github.sha }}
+      - uses: actions/checkout@v5
+      - uses: astral-sh/setup-uv@v6
         with:
-          host: ${{ secrets.DEPLOY_HOST }}
-          username: ${{ secrets.DEPLOY_USER }}
-          key: ${{ secrets.DEPLOY_SSH_KEY }}
-          envs: DEPLOY_PATH,GITHUB_SHA
-          script: |
-            set -euo pipefail
-            cd "$DEPLOY_PATH/src"
-            git pull --ff-only
-            export IMAGE_TAG="sha-${GITHUB_SHA::7}"
-            docker compose -f docker-compose.prod.yml pull
-            docker compose -f docker-compose.prod.yml up -d --remove-orphans
-            sleep 5
-            curl -fsS http://localhost/api/health
-            docker image prune -f
+          enable-cache: true
+          cache-dependency-glob: src/backend/uv.lock
+      - run: uv python install 3.12
+      - run: uv sync --frozen --no-dev
+        working-directory: src/backend
+      - name: Migrations
+        run: uv run alembic upgrade head
+        working-directory: src/backend
+        env:
+          APP_ENV: prod
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          DATABASE_URL_MIGRATOR: ${{ secrets.DATABASE_URL_MIGRATOR }}
+      - uses: pnpm/action-setup@v4
+        with:
+          package_json_file: src/worker/package.json
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: |
+            src/frontend/pnpm-lock.yaml
+            src/worker/pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile
+        working-directory: src/frontend
+      - run: pnpm install --frozen-lockfile
+        working-directory: src/worker
+      - name: Wrangler deploy
+        run: pnpm run deploy
+        working-directory: src/worker
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      - name: Smoke test
+        env:
+          APP_URL: ${{ vars.APP_URL }}
+        run: |
+          for _ in $(seq 1 30); do
+            curl -fsS "$APP_URL/api/health" && exit 0
+            sleep 10
+          done
+          echo "health nao respondeu em 5 minutos"
+          exit 1

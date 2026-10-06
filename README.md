@@ -16,7 +16,7 @@ Recebe um processo judicial em PDF e automatiza o caminho até o leilão: preenc
 
 | Camada | Tecnologia |
 |---|---|
-| Backend | Python 3.12 · FastAPI (ASGI/uvicorn) · SQLAlchemy 2.0 async · Alembic · PostgreSQL 16 · `uv` · Ruff |
+| Backend | Python 3.12 · FastAPI (ASGI/uvicorn) · SQLAlchemy 2.0 async · Alembic · PostgreSQL 16 (local) ou Supabase · `uv` · Ruff |
 | Frontend | React 19 · TypeScript · Vite · React Router · TanStack Query · Tailwind CSS v4 · MSW · Vitest · `pnpm` · Biome |
 | LLM | Interface com driver trocável: `fake` (fixtures, usado na entrega) e `anthropic` (Claude, opcional) |
 | Infra | Docker Compose (dev e prod) · nginx (proxy + estático) · backup diário · GitHub Actions (CI + e2e Playwright + CD) · GHCR |
@@ -56,6 +56,67 @@ Produção (um servidor, imagens do GHCR):
 
 ```bash
 cd src && docker compose -f docker-compose.prod.yml up -d
+```
+
+## Banco no Supabase
+
+O Supabase é usado só como Postgres (sem Auth, Storage ou Data API). Basta trocar as URLs no `src/.env`. Testes e CI continuam no Postgres local.
+
+1. No dashboard do projeto:
+   - Em **Integrations → Data API**, desligue **Enable Data API**.
+   - Em **Database → Settings**, ligue **Enforce SSL**.
+   - Em **Connect → Session pooler**, anote o host (`aws-<n>-<regiao>.pooler.supabase.com`), a porta `5432` e o *project ref*.
+   - Rode `SHOW server_version;` no SQL Editor e use a imagem `postgres:<major>-alpine` correspondente nos comandos abaixo.
+2. Crie as roles (do seu shell; senhas não vão pro repositório):
+
+   ```bash
+   read -rs SENHA_POSTGRES; read -rs SENHA_OWNER; read -rs SENHA_APP
+   docker run --rm -i -e PGPASSWORD="$SENHA_POSTGRES" postgres:17-alpine \
+     psql "host=aws-<n>-<regiao>.pooler.supabase.com port=5432 dbname=postgres user=postgres.<ref> sslmode=require" \
+     -v ON_ERROR_STOP=1 -v senha_owner="$SENHA_OWNER" -v senha_app="$SENHA_APP" < src/docker/supabase/01-roles.sql
+   ```
+
+   Confira no SQL Editor: `SELECT has_schema_privilege('leiloes_owner', 'public', 'CREATE'), has_schema_privilege('leiloes_app', 'public', 'CREATE');` → `true | false`.
+
+3. No `src/.env`:
+
+   ```
+   DATABASE_URL=postgresql+asyncpg://leiloes_app.<ref>:<SENHA_APP>@aws-<n>-<regiao>.pooler.supabase.com:5432/postgres?ssl=require
+   DATABASE_URL_MIGRATOR=postgresql+asyncpg://leiloes_owner.<ref>:<SENHA_OWNER>@aws-<n>-<regiao>.pooler.supabase.com:5432/postgres?ssl=require
+   ```
+
+   - **Use `ssl=require` e nunca `sslmode`.** A API não sobe se a URL apontar pra fora do Postgres local sem `ssl=require`.
+   - **Senha com caractere especial** vai percent-encoded: `@` → `%40`, `/` → `%2F`, `#` → `%23`, `%` → `%25`, `:` → `%3A`, `$` → `%24`. O `$` cru é interpolado pelo compose e corta a senha. Pra codificar a senha inteira: `python3 -c 'import urllib.parse, getpass; print(urllib.parse.quote(getpass.getpass(""), safe=""))'`.
+   - **Deixe `DATABASE_URL_TEST` no Postgres local.**
+
+4. Migrations e primeiro usuário:
+
+   ```bash
+   cd src
+   docker compose up --build
+   docker compose exec backend uv run alembic upgrade head
+   docker compose exec backend uv run python -m app.cli criar-usuario admin --nome "Admin" --perfil admin
+   curl -fsS http://localhost/api/health
+   ```
+
+   O `/api/health` responde `503 {"detail":"Banco indisponível"}` se o banco não responder.
+
+**Plano Free:**
+- **Pausa por inatividade:** o projeto pausa depois de 7 dias de baixa atividade e é reativado pelo dashboard.
+- **Sem backup automático.** Backup manual:
+
+```bash
+docker run --rm -e PGPASSWORD="$SENHA_OWNER" postgres:17-alpine \
+  pg_dump "host=aws-<n>-<regiao>.pooler.supabase.com port=5432 dbname=postgres user=leiloes_owner.<ref> sslmode=require" \
+  -Fc --data-only -n public --exclude-table=public.alembic_version > leiloes-$(date +%F).dump
+```
+
+Restaurar num projeto com as roles criadas, as migrations na mesma revisão do dump e as tabelas vazias:
+
+```bash
+docker run --rm -i -e PGPASSWORD="$SENHA_OWNER" postgres:17-alpine \
+  pg_restore --data-only --no-owner --single-transaction \
+  -d "host=aws-<n>-<regiao>.pooler.supabase.com port=5432 dbname=postgres user=leiloes_owner.<ref> sslmode=require" < leiloes-<data>.dump
 ```
 
 ## Backup e restore (produção)

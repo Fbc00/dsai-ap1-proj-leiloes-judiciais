@@ -1,16 +1,23 @@
 from datetime import time
 from functools import lru_cache
 from pathlib import Path
-from typing import Literal
+from typing import Literal, Self
 from zoneinfo import ZoneInfo
 
-from pydantic import SecretStr
+from pydantic import SecretStr, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+from sqlalchemy.engine import make_url
+
+HOSTS_LOCAIS: frozenset[str] = frozenset({"postgres", "localhost", "127.0.0.1"})
+SSL_SEGURO: frozenset[str] = frozenset({"require", "verify-ca", "verify-full"})
 
 
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(
-        env_file=(".env", "../.env"), env_file_encoding="utf-8", extra="ignore"
+        env_file=(".env", "../.env"),
+        env_file_encoding="utf-8",
+        extra="ignore",
+        hide_input_in_errors=True,
     )
 
     APP_ENV: Literal["dev", "prod", "test"] = "dev"
@@ -48,6 +55,25 @@ class Settings(BaseSettings):
     SMTP_USER: str = ""
     SMTP_PASSWORD: SecretStr = SecretStr("")
     SMTP_TLS: bool = True
+
+    @model_validator(mode="after")
+    def exige_ssl_fora_do_local(self) -> Self:
+        urls: dict[str, str] = {
+            "DATABASE_URL": self.DATABASE_URL,
+            "DATABASE_URL_MIGRATOR": self.DATABASE_URL_MIGRATOR,
+            "DATABASE_URL_TEST": self.DATABASE_URL_TEST,
+        }
+        for nome, valor in urls.items():
+            if not valor:
+                continue
+            url = make_url(valor)
+            if url.host is None or url.host in HOSTS_LOCAIS:
+                continue
+            if "sslmode" in url.query:
+                raise ValueError(f"{nome}: use ?ssl=require (asyncpg), não sslmode")
+            if url.query.get("ssl") not in SSL_SEGURO:
+                raise ValueError(f"{nome} precisa de ?ssl=require fora do Postgres local")
+        return self
 
     @property
     def tz(self) -> ZoneInfo:

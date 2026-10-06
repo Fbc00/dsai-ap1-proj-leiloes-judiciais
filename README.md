@@ -77,6 +77,8 @@ cd ../e2e && E2E_BASE_URL=http://localhost:8787 pnpm test
 
 Os PDFs ficam no disco do container, que é efêmero: somem quando ele dorme (2h sem uso) ou a versão muda.
 
+Previews de branch (`wrangler preview`) usam LLM `fake` e e-mail em arquivo. Configure o banco de staging uma vez: `cd src/worker && pnpm exec wrangler preview base-config secret put DATABASE_URL`.
+
 Rollback: `cd src/worker && pnpm exec wrangler rollback`.
 
 Alternativa self-hosted (um servidor com Docker Compose):

@@ -66,5 +66,34 @@
       "EMAIL_FROM",
       "MARKETING_EMAILS"
     ]
+  },
+  "previews": {
+    "durable_objects": {
+      "bindings": [
+        {
+          "name": "BACKEND",
+          "class_name": "Backend"
+        }
+      ]
+    },
+    "ratelimits": [
+      {
+        "name": "LOGIN_LIMITER",
+        "namespace_id": "1002",
+        "simple": {
+          "limit": 5,
+          "period": 60
+        }
+      }
+    ],
+    "vars": {
+      "APP_ENV": "prod",
+      "LOG_LEVEL": "INFO",
+      "COOKIE_SECURE": "true",
+      "LLM_PROVIDER": "fake",
+      "EMAIL_BACKEND": "file",
+      "SMTP_PORT": "587",
+      "SMTP_TLS": "true"
+    }
   }
 }

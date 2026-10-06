@@ -1,11 +1,10 @@
-name: Deploy
+name: Deploy prod
 
 on:
-  push:
-    branches: [main]
+  workflow_dispatch:
 
 concurrency:
-  group: deploy-${{ github.ref }}
+  group: deploy-prod
   cancel-in-progress: false
 
 permissions:
@@ -13,6 +12,7 @@ permissions:
 
 jobs:
   ci:
+    if: github.ref == 'refs/heads/main'
     uses: ./.github/workflows/ci.yml
 
   deploy:
@@ -48,7 +48,7 @@ jobs:
       - run: pnpm install --frozen-lockfile
         working-directory: src/worker
       - name: Wrangler deploy
-        run: pnpm run deploy
+        run: pnpm run deploy:prod
         working-directory: src/worker
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}

@@ -56,9 +56,14 @@ cd e2e && pnpm install && pnpm exec playwright install chromium && pnpm test   #
 
 Um Worker (`src/worker/`) serve o build do frontend e encaminha `/api/*` pro container do backend (`src/backend/Dockerfile`), tudo na mesma origem. Banco no Supabase (seção abaixo). Exige plano Workers Paid. Detalhes: [`SPEC/2026-10-01-infra.md` §10](SPEC/2026-10-01-infra.md).
 
-Deploy automático no push pra `main` (`.github/workflows/deploy.yml`: CI → migrations → `wrangler deploy` → `/api/health`). Configuração única:
+Dois deploys, ambos manuais pelo GitHub Actions:
 
-1. Secrets do repositório no GitHub: `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID`, `DATABASE_URL`, `DATABASE_URL_MIGRATOR`. Variable: `APP_URL`.
+- **Preview** (`.github/workflows/deploy-preview.yml`): **Actions → Deploy preview → Run workflow** na branch desejada, `acao: deploy`. Migrations no banco de staging → `wrangler preview --name <branch>`. Pra apagar, mesmo workflow com `acao: remover`.
+- **Prod** (`.github/workflows/deploy-prod.yml`): só manual, em **Actions → Deploy prod → Run workflow** na `main`. CI → migrations → `wrangler deploy` → `/api/health`.
+
+Configuração única:
+
+1. GitHub: secrets do repositório `CLOUDFLARE_API_TOKEN` e `CLOUDFLARE_ACCOUNT_ID`; environment `production` (com required reviewer) com secrets `DATABASE_URL`, `DATABASE_URL_MIGRATOR` e variable `APP_URL`; environment `preview` com `DATABASE_URL` e `DATABASE_URL_MIGRATOR` do banco de staging. Na Cloudflare, desconecte o Workers Builds do repositório.
 2. Secrets do Worker (o valor é digitado no prompt):
 
    ```bash
@@ -77,7 +82,7 @@ cd ../e2e && E2E_BASE_URL=http://localhost:8787 pnpm test
 
 Os PDFs ficam no disco do container, que é efêmero: somem quando ele dorme (2h sem uso) ou a versão muda.
 
-Previews de branch (`wrangler preview`) usam LLM `fake` e e-mail em arquivo. Configure o banco de staging uma vez: `cd src/worker && pnpm exec wrangler preview base-config secret put DATABASE_URL`.
+Previews usam LLM `fake` e e-mail em arquivo. Configure o banco de staging uma vez: `cd src/worker && pnpm exec wrangler preview base-config secret put DATABASE_URL`.
 
 Rollback: `cd src/worker && pnpm exec wrangler rollback`.
 

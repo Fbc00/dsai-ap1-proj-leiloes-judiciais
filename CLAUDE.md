@@ -20,7 +20,7 @@ README.md        URL, dupla, stack, como rodar, ferramentas, modelos, cloc
 SPEC/            uma spec por parte, datada · referencias/ (docs do dominio)
 prompts/planos/  planos de implementacao · prompts/sessoes/ prompts e respostas das sessoes de IA, dados sensiveis mascarados (hook automatico)
 .claude/         settings.json (hook Stop) · hooks/exportar-sessao.py
-.github/         ci.yml (PR: ruff, pytest, biome, vitest, worker, build imagens, audit) · deploy.yml (main → migrations → wrangler deploy) · dependabot.yml
+.github/         ci.yml (PR: ruff, pytest, biome, vitest, worker, build imagens, audit) · deploy-preview.yml (manual → wrangler preview) · deploy-prod.yml (manual → migrations → wrangler deploy) · dependabot.yml
 src/             aplicacao: docker-compose*.yml, .env.example, docker/, nginx/, backend/, frontend/, worker/ (Cloudflare prod)
 ```
 

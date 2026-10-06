@@ -6,7 +6,8 @@
   "packageManager": "pnpm@12.8.1",
   "scripts": {
     "dev": "wrangler dev",
-    "deploy": "wrangler deploy",
+    "deploy:prod": "wrangler deploy",
+    "deploy:preview": "wrangler preview",
     "check": "wrangler deploy --dry-run",
     "types": "wrangler types",
     "typecheck": "wrangler types && tsc --noEmit",

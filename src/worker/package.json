@@ -11,7 +11,7 @@
     "check": "wrangler deploy --dry-run",
     "types": "wrangler types",
     "typecheck": "wrangler types && tsc --noEmit",
-    "test": "vitest run"
+    "test": "vitest run --dir test"
   },
   "devDependencies": {
     "typescript": "7.0.2",

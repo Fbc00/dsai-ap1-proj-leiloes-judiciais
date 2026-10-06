@@ -36,7 +36,7 @@ jobs:
           tags: |
             type=sha,prefix=sha-,format=short
             type=raw,value=latest
-      - uses: docker/build-push-action@v6
+      - uses: docker/build-push-action@v7
         with:
           context: src/backend
           target: prod
@@ -52,7 +52,7 @@ jobs:
           tags: |
             type=sha,prefix=sha-,format=short
             type=raw,value=latest
-      - uses: docker/build-push-action@v6
+      - uses: docker/build-push-action@v7
         with:
           context: src
           file: src/frontend/Dockerfile

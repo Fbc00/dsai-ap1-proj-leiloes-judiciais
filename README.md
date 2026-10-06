@@ -4,8 +4,8 @@ Recebe um processo judicial em PDF e automatiza o caminho até o leilão: preenc
 
 ## URL
 
-- Repositório: `<URL do repositório no GitHub>`
-- Aplicação: `<URL do deploy>`
+- Repositório: https://github.com/Fbc00/dsai-ap1-proj-leiloes-judiciais
+- Aplicação: https://dsai-ap1-proj-leiloes-judiciais.fabricioassuncao855-d8e.workers.dev/
 
 ## Dupla
 
@@ -164,12 +164,34 @@ docker run --rm -i -e PGPASSWORD="$SENHA_OWNER" postgres:17-alpine \
 
 ## Saída do cloc
 
-Gerar ao final da implementação, da raiz do repositório:
+**Resumo:** 178 arquivos · 17.972 linhas de código · 1.696 em branco · 8.131 de comentário.
+
+Da raiz do repositório:
 
 ```bash
 cloc src --exclude-dir=node_modules,.venv,dist,__pycache__ --not-match-f='pnpm-lock.yaml|uv.lock|mockServiceWorker.js'
 ```
 
 ```
-<colar saída aqui>
+github.com/AlDanial/cloc v 2.04  T=0.17 s (1028.3 files/s, 160600.6 lines/s)
+-------------------------------------------------------------------------------
+Language                     files          blank        comment           code
+-------------------------------------------------------------------------------
+TypeScript                      88            509           8083          13153
+Python                          62           1021             48           4055
+JSON                            11              0              0            289
+Markdown                         3             39              0            132
+Jinja Template                   1             97              0            116
+YAML                             3              4              0             63
+TOML                             1              6              0             45
+Dockerfile                       2              3              0             39
+INI                              1              8              0             31
+Bourne Shell                     2              3              0             18
+HTML                             1              0              0             12
+Mako                             1              6              0             12
+SQL                              1              0              0              6
+CSS                              1              0              0              1
+-------------------------------------------------------------------------------
+SUM:                           178           1696           8131          17972
+-------------------------------------------------------------------------------
 ```

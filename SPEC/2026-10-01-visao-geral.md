@@ -43,12 +43,12 @@ Fluxo na UI: Login → Processos (upload) → Detalhe do processo (analisar → 
 | Análise | `POST /processos/{id}/analisar` é síncrono (aguarda LLM). nginx `proxy_read_timeout 300s`. |
 | Auth | Login usuário/senha, sessão em cookie HttpOnly. **Dois perfis**: `admin` (tudo + apagar processo, cancelar leilão, gerir bloqueios, gerir usuários) e `operador` (upload, analisar, editar checklist, agendar, gerar/editar edital, enviar marketing, trocar a própria senha). Usuários geridos por admin na UI; primeiro admin via CLI. |
 | Agenda | Dia "livre" = dia útil (seg–sex) **e** não feriado (lib `holidays`, `BR` + `subdiv="PA"`) **e** não bloqueado manualmente. **Sem limite de leilões por dia.** Janela 30–45 dias **corridos** a partir de hoje; 2º leilão = 1º + 7 dias; se D+7 não é livre, descarta D. Hora única `HORARIO_LEILAO`; data manual manda só a data. |
-| Dados | Retenção manual: dado fica até admin apagar o processo (apaga PDF, texto, checklist). Backup diário de `pgdata` + `media` no compose prod, retenção 7 dias. |
-| Logs | JSON em stdout com `request_id` (nginx `X-Request-ID`), nível por `LOG_LEVEL`. Nunca corpo de request, PDF, texto extraído ou segredo. |
+| Dados | Retenção manual: dado fica até admin apagar o processo (apaga PDF, texto, checklist). Banco no Supabase, backup por `pg_dump` manual (spec infra §2). PDFs no disco efêmero do container (spec infra §4). |
+| Logs | JSON em stdout com `request_id` (`X-Request-ID` do nginx em dev, do Worker em prod), nível por `LOG_LEVEL`. Nunca corpo de request, PDF, texto extraído ou segredo. |
 | Paginação | Nenhuma no v1 (listas pequenas). |
-| TLS | Terminado fora do nginx deste compose (LB/proxy externo). `COOKIE_SECURE` por env: `true` só atrás de HTTPS. |
+| TLS | Terminado pela Cloudflare em produção. `COOKIE_SECURE` por env: `true` em produção, `false` no compose de dev (HTTP). |
 | Timezone | `TIMEZONE=America/Belem`. Banco guarda UTC (`timestamptz`); API devolve ISO 8601 com offset. |
-| CI/CD | GitHub Actions. CI em PR (lint, testes, build de imagem, audit, **e2e Playwright contra o compose**). CD em `main`: publica imagens no GHCR e faz deploy por SSH num servidor com Docker Compose, com aprovação manual (environment `production`). Alvo do deploy ainda não decidido — job fica pronto, só roda com os secrets. |
+| CI/CD | GitHub Actions. CI em PR (lint, testes, worker + `wrangler deploy --dry-run`, audit, **e2e Playwright contra o compose**). Deploy na Cloudflare (Worker + Container), preview e prod só por disparo manual no Actions; prod com aprovação (environment `production`). Ver spec infra §4 e §7. |
 | Sessões de IA | Hook `Stop` do Claude Code (`.claude/settings.json` → `.claude/hooks/exportar-sessao.py`) extrai do transcript só os prompts do usuário e as respostas em texto do Claude (sem thinking, tool calls, tool results, anexos nem mensagens de sistema) e grava em `prompts/sessoes/claude-code/<data>-<session_id>.md` a cada turno. Antes de gravar, mascara dados sensíveis: senhas/tokens/chaves (`chave=valor`, `senha \`x\``, pares usuário/senha), JWT, chaves privadas, credenciais em URL, e-mail, CPF, CNPJ, nº de processo CNJ, telefone, IP, host de túnel e `/home/<usuário>`. Transcript bruto (`.jsonl`) nunca vai pro repo. Exportações de outras ferramentas vão manualmente pra `prompts/sessoes/<ferramenta>/`. |
 
 ## 3. Estrutura do repositório
@@ -58,7 +58,7 @@ Fluxo na UI: Login → Processos (upload) → Detalhe do processo (analisar → 
 ├── README.md                     URL, dupla, stack, como rodar, ferramentas, modelos, saída do cloc
 ├── CLAUDE.md                     policies + índice pra agents de IA
 ├── .claude/                      settings.json (hook Stop) · hooks/exportar-sessao.py
-├── .github/                      workflows/ci.yml · workflows/deploy.yml · dependabot.yml
+├── .github/                      workflows/ci.yml · workflows/deploy-preview.yml · workflows/deploy-prod.yml · dependabot.yml
 ├── .gitignore
 ├── SPEC/                         uma spec por parte, datada · referencias/ (docs do domínio)
 ├── prompts/
@@ -66,13 +66,13 @@ Fluxo na UI: Login → Processos (upload) → Detalhe do processo (analisar → 
 │   └── sessoes/claude-code/      prompts e respostas das sessões, mascarados (hook automático)
 └── src/                          aplicação
     ├── docker-compose.yml        dev
-    ├── docker-compose.prod.yml   prod
     ├── .env.example
     ├── docker/postgres/init/01-roles.sh
     ├── docker/supabase/01-roles.sql
-    ├── nginx/dev.conf  nginx/prod.conf
+    ├── nginx/dev.conf
     ├── backend/                  FastAPI (ver spec backend §Layout)
     ├── frontend/                 React + Vite (ver spec frontend §Layout)
+    ├── worker/                   Cloudflare Worker + Container, produção (ver spec infra §4)
     └── e2e/                      Playwright, um cenário feliz contra o compose (ver spec infra §8)
 ```
 

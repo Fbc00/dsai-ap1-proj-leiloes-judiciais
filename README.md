@@ -54,7 +54,7 @@ cd e2e && pnpm install && pnpm exec playwright install chromium && pnpm test   #
 
 ## Produção (Cloudflare)
 
-Um Worker (`src/worker/`) serve o build do frontend e encaminha `/api/*` pro container do backend (`src/backend/Dockerfile`), tudo na mesma origem. Banco no Supabase (seção abaixo). Exige plano Workers Paid. Detalhes: [`SPEC/2026-10-01-infra.md` §10](SPEC/2026-10-01-infra.md).
+Um Worker (`src/worker/`) serve o build do frontend e encaminha `/api/*` pro container do backend (`src/backend/Dockerfile`), tudo na mesma origem. Banco no Supabase (seção abaixo). Exige plano Workers Paid. Detalhes: [`SPEC/2026-10-01-infra.md` §4](SPEC/2026-10-01-infra.md).
 
 Dois deploys, ambos manuais pelo GitHub Actions:
 
@@ -86,11 +86,6 @@ Previews usam LLM `fake` e e-mail em arquivo. Configure o banco de staging uma v
 
 Rollback: `cd src/worker && pnpm exec wrangler rollback`.
 
-Alternativa self-hosted (um servidor com Docker Compose):
-
-```bash
-cd src && docker compose -f docker-compose.prod.yml up -d --build
-```
 
 ## Banco no Supabase
 
@@ -152,31 +147,6 @@ docker run --rm -i -e PGPASSWORD="$SENHA_OWNER" postgres:17-alpine \
   pg_restore --data-only --no-owner --single-transaction \
   -d "host=aws-<n>-<regiao>.pooler.supabase.com port=5432 dbname=postgres user=leiloes_owner.<ref> sslmode=require" < leiloes-<data>.dump
 ```
-
-## Backup e restore (self-hosted)
-
-O serviço `backup` do `src/docker-compose.prod.yml` grava diariamente em um volume `backups`:
-`pg-<data>.dump` (`pg_dump -Fc`) e `media-<data>.tgz` (PDFs e e-mails), retenção `BACKUP_RETENCAO_DIAS` (default 7).
-
-Copiar os backups pra fora do host:
-
-```bash
-cd src && docker compose -f docker-compose.prod.yml cp backup:/backups ./backups-copia
-```
-
-Restaurar o banco (apaga e recria os objetos):
-
-```bash
-cd src && docker compose -f docker-compose.prod.yml exec -T postgres pg_restore -U "$POSTGRES_USER" -d "$POSTGRES_DB" --clean --if-exists < pg-<data>.dump
-```
-
-Restaurar a mídia:
-
-```bash
-cd src && docker compose -f docker-compose.prod.yml run --rm --no-deps --entrypoint tar -v "$PWD/media-<data>.tgz:/b.tgz:ro" backend xzf /b.tgz -C /data
-```
-
-Rollback de versão: `git checkout <commit anterior>` e `cd src && docker compose -f docker-compose.prod.yml up -d --build`.
 
 ## Ferramentas
 

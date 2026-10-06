@@ -24,7 +24,3 @@ updates:
     directory: /src/backend
     schedule:
       interval: weekly
-  - package-ecosystem: docker
-    directory: /src/frontend
-    schedule:
-      interval: weekly

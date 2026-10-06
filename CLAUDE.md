@@ -20,7 +20,7 @@ README.md        URL, dupla, stack, como rodar, ferramentas, modelos, cloc
 SPEC/            uma spec por parte, datada · referencias/ (docs do dominio)
 prompts/planos/  planos de implementacao · prompts/sessoes/ prompts e respostas das sessoes de IA, dados sensiveis mascarados (hook automatico)
 .claude/         settings.json (hook Stop) · hooks/exportar-sessao.py
-.github/         ci.yml (PR: ruff, pytest, biome, vitest, worker, build imagens, audit) · deploy-preview.yml (manual → wrangler preview) · deploy-prod.yml (manual → migrations → wrangler deploy) · dependabot.yml
+.github/         ci.yml (PR: ruff, pytest, biome, vitest, worker + dry-run, audit) · deploy-preview.yml (manual → wrangler preview) · deploy-prod.yml (manual → migrations → wrangler deploy) · dependabot.yml
 src/             aplicacao: docker-compose*.yml, .env.example, docker/, nginx/, backend/, frontend/, worker/ (Cloudflare prod)
 ```
 
@@ -42,7 +42,6 @@ docker compose exec backend uv run python -m app.cli criar-usuario admin --nome 
 docker compose exec backend uv run pytest tests/test_agenda.py      # teste de uma feature
 docker compose exec frontend pnpm test -- src/features/agenda
 VITE_API_MOCK=true docker compose up frontend nginx                 # so frontend, sem backend
-docker compose -f docker-compose.prod.yml up --build -d
 ```
 
 ## Mentalidade

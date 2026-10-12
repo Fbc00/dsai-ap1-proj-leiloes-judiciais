@@ -1,4 +1,6 @@
 import logging
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
 from typing import Annotated
 
 from fastapi import Depends, FastAPI, Request
@@ -6,6 +8,7 @@ from fastapi.responses import JSONResponse
 from sqlalchemy import text
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
+from starlette.routing import Route
 
 from app import errors
 from app.agenda.router import router as agenda_router
@@ -14,6 +17,7 @@ from app.db import get_session
 from app.editais.router import router as editais_router
 from app.logging import RequestLogMiddleware, configurar_logging
 from app.marketing.router import router as marketing_router
+from app.mcp_server import ROTA_MCP, ExigeBearer, criar_app_http, criar_servidor
 from app.processos.router import router as processos_router
 from app.security.csrf import CsrfMiddleware
 from app.security.router import router as auth_router
@@ -31,9 +35,21 @@ def create_app() -> FastAPI:
     settings = get_settings()
     configurar_logging(settings.LOG_LEVEL)
     expor_docs = settings.APP_ENV != "prod"
+    servidor_mcp = criar_servidor() if settings.mcp_habilitado else None
+    app_mcp = criar_app_http(servidor_mcp) if servidor_mcp is not None else None
+
+    @asynccontextmanager
+    async def lifespan(_: FastAPI) -> AsyncIterator[None]:
+        if servidor_mcp is None:
+            yield
+            return
+        async with servidor_mcp.session_manager.run():
+            yield
+
     app = FastAPI(
         title="Leilões Judiciais",
         debug=False,
+        lifespan=lifespan,
         docs_url="/api/docs" if expor_docs else None,
         openapi_url="/api/openapi.json" if expor_docs else None,
     )
@@ -47,6 +63,8 @@ def create_app() -> FastAPI:
     app.include_router(agenda_router)
     app.include_router(editais_router)
     app.include_router(marketing_router)
+    if app_mcp is not None:
+        app.router.routes.append(Route(ROTA_MCP, ExigeBearer(app_mcp, settings.MCP_TOKEN)))
 
     @app.get("/api/health")
     async def health(session: Annotated[AsyncSession, Depends(get_session)]) -> dict[str, str]:

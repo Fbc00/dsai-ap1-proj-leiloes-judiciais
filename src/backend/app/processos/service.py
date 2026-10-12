@@ -16,7 +16,13 @@ from app.llm.base import LLMClient
 from app.pdf.extract import extract_text
 from app.processos.models import ChecklistDB, Processo, RelatorioDB
 from app.processos.prompts import SYSTEM_CHECKLIST, SYSTEM_RELATORIO, user_prompt
-from app.processos.schemas import Checklist, ProcessoDetalheOut, Relatorio
+from app.processos.schemas import (
+    BemPenhorado,
+    Checklist,
+    Pendencia,
+    ProcessoDetalheOut,
+    Relatorio,
+)
 
 logger = logging.getLogger("app.processos")
 
@@ -97,6 +103,92 @@ async def detalhe(session: AsyncSession, processo_id: UUID) -> ProcessoDetalheOu
     processo = await obter(session, processo_id)
     leilao = await agenda_service.leilao_ativo(session, processo.id)
     return detalhe_out(processo, leilao)
+
+
+ONUS: tuple[tuple[str, str], ...] = (
+    ("hipoteca", "hipoteca"),
+    ("enfiteuse", "enfiteuse"),
+    ("outras_penhoras", "outras penhoras"),
+)
+
+
+def _pendencias_do_bem(i: int, bem: BemPenhorado) -> list[Pendencia]:
+    n = i + 1
+    prefixo = f"bens[{i}]"
+    itens: list[Pendencia] = []
+    if bem.executado_intimado is not True:
+        itens.append(
+            Pendencia(
+                gravidade="bloqueia",
+                campo=f"{prefixo}.executado_intimado",
+                mensagem=f"Intimação da penhora do bem {n} não comprovada",
+                ref=bem.intimacao_ref,
+            )
+        )
+    if bem.valor_avaliacao is None and bem.valor_reavaliacao is None:
+        itens.append(
+            Pendencia(
+                gravidade="bloqueia",
+                campo=f"{prefixo}.valor_avaliacao",
+                mensagem=f"Bem {n} sem avaliação",
+            )
+        )
+    if bem.certidao_matricula_ref is None:
+        itens.append(
+            Pendencia(
+                gravidade="atencao",
+                campo=f"{prefixo}.certidao_matricula_ref",
+                mensagem=f"Certidão de matrícula do bem {n} sem referência nos autos",
+            )
+        )
+    for atributo, rotulo in ONUS:
+        valor: str | None = getattr(bem, atributo)
+        if valor:
+            itens.append(
+                Pendencia(
+                    gravidade="atencao",
+                    campo=f"{prefixo}.{atributo}",
+                    mensagem=f"Bem {n}, {rotulo}: {valor} — conferir ônus",
+                )
+            )
+    return itens
+
+
+def pendencias(checklist: Checklist | None) -> list[Pendencia]:
+    if checklist is None:
+        return [
+            Pendencia(
+                gravidade="bloqueia", campo="checklist", mensagem="Processo ainda não analisado"
+            )
+        ]
+    itens: list[Pendencia] = []
+    if not checklist.executados:
+        itens.append(
+            Pendencia(
+                gravidade="bloqueia",
+                campo="executados",
+                mensagem="Nenhum executado identificado",
+            )
+        )
+    for i, executado in enumerate(checklist.executados):
+        if executado.citado is not True:
+            itens.append(
+                Pendencia(
+                    gravidade="bloqueia",
+                    campo=f"executados[{i}].citado",
+                    mensagem=f"Citação de {executado.nome} não comprovada",
+                    ref=executado.citacao_ref,
+                )
+            )
+    if not checklist.bens:
+        itens.append(Pendencia(gravidade="bloqueia", campo="bens", mensagem="Nenhum bem penhorado"))
+    for i, bem in enumerate(checklist.bens):
+        itens.extend(_pendencias_do_bem(i, bem))
+    for i, observacao in enumerate(checklist.observacoes_leilao):
+        itens.append(
+            Pendencia(gravidade="atencao", campo=f"observacoes_leilao[{i}]", mensagem=observacao)
+        )
+    return itens
 
 
 async def _marcar_erro(session: AsyncSession, processo: Processo, mensagem: str) -> None:

@@ -23,6 +23,7 @@ Dinheiro = Annotated[
 ]
 ProcessoStatus = Literal["recebido", "analisando", "analisado", "erro"]
 TipoJustica = Literal["estadual", "federal"]
+Gravidade = Literal["bloqueia", "atencao"]
 Ref = Annotated[
     str | None,
     Field(
@@ -103,6 +104,13 @@ class Etapa(BaseModel):
 class Relatorio(BaseModel):
     resumo: str
     etapas: list[Etapa] = Field(default_factory=list)
+
+
+class Pendencia(BaseModel):
+    gravidade: Gravidade
+    campo: str
+    mensagem: str
+    ref: str | None = None
 
 
 class ProcessoOut(BaseModel):

@@ -10,6 +10,7 @@ from sqlalchemy.engine import make_url
 
 HOSTS_LOCAIS: frozenset[str] = frozenset({"postgres", "localhost", "127.0.0.1"})
 SSL_SEGURO: frozenset[str] = frozenset({"require", "verify-ca", "verify-full"})
+MCP_TOKEN_MIN: int = 32
 
 
 class Settings(BaseSettings):
@@ -56,6 +57,8 @@ class Settings(BaseSettings):
     SMTP_PASSWORD: SecretStr = SecretStr("")
     SMTP_TLS: bool = True
 
+    MCP_TOKEN: SecretStr = SecretStr("")
+
     @model_validator(mode="after")
     def exige_ssl_fora_do_local(self) -> Self:
         urls: dict[str, str] = {
@@ -74,6 +77,17 @@ class Settings(BaseSettings):
             if url.query.get("ssl") not in SSL_SEGURO:
                 raise ValueError(f"{nome} precisa de ?ssl=require fora do Postgres local")
         return self
+
+    @model_validator(mode="after")
+    def exige_mcp_token_forte(self) -> Self:
+        token = self.MCP_TOKEN.get_secret_value()
+        if token and len(token) < MCP_TOKEN_MIN:
+            raise ValueError(f"MCP_TOKEN precisa de pelo menos {MCP_TOKEN_MIN} caracteres")
+        return self
+
+    @property
+    def mcp_habilitado(self) -> bool:
+        return bool(self.MCP_TOKEN.get_secret_value())
 
     @property
     def tz(self) -> ZoneInfo:

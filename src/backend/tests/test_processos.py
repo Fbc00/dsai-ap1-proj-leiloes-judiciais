@@ -9,7 +9,9 @@ from app.config import Settings, get_settings
 from app.llm import llm_client_dep
 from app.llm.fake import FIXTURES_DIR, FakeLLMClient
 from app.main import app
+from app.processos import service
 from app.processos.models import Processo
+from app.processos.schemas import Checklist, Pendencia
 from tests.fixtures import TEXTO_PROCESSO, make_pdf, make_pdf_sem_texto
 
 CHECKLIST_VAZIO: dict[str, object] = {
@@ -240,3 +242,109 @@ async def test_put_checklist_numero_processo_longo_e_aceito(
     assert resposta.status_code == 200
     detalhe = (await cliente_logado.get(f"/api/processos/{processo_analisado.id}")).json()
     assert detalhe["numero_processo"] == longo
+
+
+def checklist_fixture(**alteracoes: object) -> Checklist:
+    dados = json.loads((FIXTURES_DIR / "Checklist.json").read_text(encoding="utf-8"))
+    dados.update(alteracoes)
+    return Checklist.model_validate(dados)
+
+
+def checklist_completo() -> Checklist:
+    checklist = checklist_fixture(observacoes_leilao=[])
+    for bem in checklist.bens:
+        bem.certidao_matricula_ref = "Id 1"
+        bem.hipoteca = None
+    return checklist
+
+
+def test_pendencias_sem_checklist_bloqueia() -> None:
+    assert service.pendencias(None) == [
+        Pendencia(gravidade="bloqueia", campo="checklist", mensagem="Processo ainda não analisado")
+    ]
+
+
+def test_pendencias_checklist_completo_vazio() -> None:
+    assert service.pendencias(checklist_completo()) == []
+
+
+def test_pendencias_checklist_vazio_bloqueia_executados_e_bens() -> None:
+    campos = [p.campo for p in service.pendencias(Checklist.model_validate(CHECKLIST_VAZIO))]
+    assert campos == ["executados", "bens"]
+
+
+def test_pendencias_executado_nao_citado_bloqueia() -> None:
+    checklist = checklist_completo()
+    checklist.executados[1].citado = None
+    assert service.pendencias(checklist) == [
+        Pendencia(
+            gravidade="bloqueia",
+            campo="executados[1].citado",
+            mensagem="Citação de EURIVALDO SOARES DE ANDRADE não comprovada",
+            ref="Id 1308225782",
+        )
+    ]
+
+
+def test_pendencias_bem_sem_intimacao_bloqueia() -> None:
+    checklist = checklist_completo()
+    checklist.bens[0].executado_intimado = False
+    assert service.pendencias(checklist) == [
+        Pendencia(
+            gravidade="bloqueia",
+            campo="bens[0].executado_intimado",
+            mensagem="Intimação da penhora do bem 1 não comprovada",
+            ref="Id 2221534539",
+        )
+    ]
+
+
+def test_pendencias_bem_sem_avaliacao_bloqueia() -> None:
+    checklist = checklist_completo()
+    checklist.bens[1].valor_avaliacao = None
+    assert service.pendencias(checklist) == [
+        Pendencia(
+            gravidade="bloqueia", campo="bens[1].valor_avaliacao", mensagem="Bem 2 sem avaliação"
+        )
+    ]
+
+
+def test_pendencias_bem_so_com_reavaliacao_nao_bloqueia() -> None:
+    checklist = checklist_completo()
+    checklist.bens[1].valor_avaliacao = None
+    checklist.bens[1].valor_reavaliacao = "90000.00"
+    assert service.pendencias(checklist) == []
+
+
+def test_pendencias_matricula_sem_ref_gera_atencao() -> None:
+    checklist = checklist_completo()
+    checklist.bens[0].certidao_matricula_ref = None
+    assert service.pendencias(checklist) == [
+        Pendencia(
+            gravidade="atencao",
+            campo="bens[0].certidao_matricula_ref",
+            mensagem="Certidão de matrícula do bem 1 sem referência nos autos",
+        )
+    ]
+
+
+def test_pendencias_bem_com_onus_gera_atencao() -> None:
+    checklist = checklist_completo()
+    checklist.bens[1].enfiteuse = "Foreiro à União"
+    checklist.bens[1].outras_penhoras = "Processo 123"
+    assert [(p.gravidade, p.campo, p.mensagem) for p in service.pendencias(checklist)] == [
+        ("atencao", "bens[1].enfiteuse", "Bem 2, enfiteuse: Foreiro à União — conferir ônus"),
+        (
+            "atencao",
+            "bens[1].outras_penhoras",
+            "Bem 2, outras penhoras: Processo 123 — conferir ônus",
+        ),
+    ]
+
+
+def test_pendencias_observacoes_viram_atencao() -> None:
+    checklist = checklist_completo()
+    checklist.observacoes_leilao = ["Reserva de meação"]
+    assert service.pendencias(checklist) == [
+        Pendencia(gravidade="atencao", campo="observacoes_leilao[0]", mensagem="Reserva de meação")
+    ]

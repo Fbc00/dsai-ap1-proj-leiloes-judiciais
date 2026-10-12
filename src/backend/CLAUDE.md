@@ -12,6 +12,7 @@ app/
   config.py      Settings (pydantic-settings). Unica fonte de env. SecretStr pra senha/chave.
   db.py          engine, async_session_factory, Base, get_session (Depends)
   cli.py         criar-usuario, limpar-sessoes
+  mcp_server.py  MCPServer (so leitura) do caderno processual, montado em /mcp com Bearer MCP_TOKEN
   security/      auth (login/logout/me), csrf, ratelimit (tentativas_login), passwords (argon2), deps (usuario_atual)
   llm/           base.py (Protocol LLMClient.structured) · fake.py · anthropic.py · get_llm_client()
   pdf/           extract.py: extract_text(path) -> str
@@ -80,7 +81,7 @@ Banco de teste `leiloes_test` e criado pelo `src/docker/postgres/init/01-roles.s
 - Sem comentarios novos. Tipagem completa. Dominio em portugues, tecnico em ingles.
 - `ruff` (lint + format) limpo antes de entregar.
 - Deps aprovadas: fastapi, uvicorn[standard], sqlalchemy[asyncio], asyncpg, alembic, pydantic-settings,
-  python-multipart, pypdf, jinja2, openpyxl, num2words, pwdlib[argon2], anthropic, holidays, python-docx.
+  python-multipart, pypdf, jinja2, openpyxl, num2words, pwdlib[argon2], anthropic, holidays, python-docx, mcp (2.x).
   Dev: pytest, pytest-asyncio, httpx, reportlab, ruff. Logs JSON com `logging` da stdlib. Outra → pergunta.
 - Rota so de admin: `Depends(exige_admin)`. Toda rota admin tem teste com `cliente_operador` esperando 403.
 - Regras de agenda sao funcoes puras em `agenda/service.py` (`candidatos`, `motivo_indisponivel`); `hoje` e parametro.

@@ -48,7 +48,7 @@ Fluxo na UI: Login → Processos (upload) → Detalhe do processo (analisar → 
 | Paginação | Nenhuma no v1 (listas pequenas). |
 | TLS | Terminado pela Cloudflare em produção. `COOKIE_SECURE` por env: `true` em produção, `false` no compose de dev (HTTP). |
 | Timezone | `TIMEZONE=America/Belem`. Banco guarda UTC (`timestamptz`); API devolve ISO 8601 com offset. |
-| CI/CD | GitHub Actions. CI em PR (lint, testes, worker + `wrangler deploy --dry-run`, audit, **e2e Playwright contra o compose**). Deploy na Cloudflare (Worker + Container), preview e prod só por disparo manual no Actions; prod com aprovação (environment `production`). Ver spec infra §4 e §7. |
+| CI/CD | GitHub Actions. CI em PR e push na `main` (lint, testes, worker + `wrangler deploy --dry-run`, audit, **e2e Playwright contra o compose**). Deploy na Cloudflare (Worker + Container), preview e prod só por disparo manual no Actions; prod com aprovação (environment `production`). Ver spec infra §4 e §7. |
 | Sessões de IA | Hook `Stop` do Claude Code (`.claude/settings.json` → `.claude/hooks/exportar-sessao.py`) extrai do transcript só os prompts do usuário e as respostas em texto do Claude (sem thinking, tool calls, tool results, anexos nem mensagens de sistema) e grava em `prompts/sessoes/claude-code/<data>-<session_id>.md` a cada turno. Antes de gravar, mascara dados sensíveis: senhas/tokens/chaves (`chave=valor`, `senha \`x\``, pares usuário/senha), JWT, chaves privadas, credenciais em URL, e-mail, CPF, CNPJ, nº de processo CNJ, telefone, IP, host de túnel e `/home/<usuário>`. Transcript bruto (`.jsonl`) nunca vai pro repo. Exportações de outras ferramentas vão manualmente pra `prompts/sessoes/<ferramenta>/`. |
 
 ## 3. Estrutura do repositório

@@ -61,10 +61,20 @@ jobs:
             src/worker/pnpm-lock.yaml
       - run: pnpm install --frozen-lockfile
         working-directory: src/worker
+      - uses: docker/setup-buildx-action@v4
+        id: buildx
+      - uses: docker/build-push-action@v7
+        with:
+          builder: ${{ steps.buildx.outputs.name }}
+          context: src/backend
+          target: prod
+          platforms: linux/amd64
+          cache-from: type=gha,scope=backend-prod
       - name: Wrangler preview
         run: pnpm run deploy:preview --name "$PREVIEW_NAME" --message "$GITHUB_SHA"
         working-directory: src/worker
         env:
+          BUILDX_BUILDER: ${{ steps.buildx.outputs.name }}
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
 

@@ -67,7 +67,7 @@ Um Worker (`src/worker/`) serve o build do frontend e encaminha `/api/*` e `/mcp
 Dois deploys, ambos manuais pelo GitHub Actions:
 
 - **Preview** (`.github/workflows/deploy-preview.yml`): **Actions → Deploy preview → Run workflow** na branch desejada, `acao: deploy`. Migrations no banco de staging → `wrangler preview --name <branch>`. Pra apagar, mesmo workflow com `acao: remover`.
-- **Prod** (`.github/workflows/deploy-prod.yml`): só manual, em **Actions → Deploy prod → Run workflow** na `main`. CI → migrations → `wrangler deploy` → `/api/health`.
+- **Prod** (`.github/workflows/deploy-prod.yml`): só manual, em **Actions → Deploy prod → Run workflow** na `main`. Migrations → `wrangler deploy` → `/api/health`. O CI roda em PR e no push da `main`, não no deploy.
 
 Configuração única:
 

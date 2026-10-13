@@ -1,3 +1,4 @@
+import asyncio
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from typing import Any
@@ -31,12 +32,29 @@ async def app_mcp(
 ) -> AsyncIterator[AsyncClient]:
     monkeypatch.setattr(main, "get_settings", lambda: settings)
     app = main.create_app()
-    async with app.router.lifespan_context(app):
+    pronto = asyncio.Event()
+    encerrar = asyncio.Event()
+
+    async def manter_lifespan() -> None:
+        async with app.router.lifespan_context(app):
+            pronto.set()
+            await encerrar.wait()
+
+    tarefa = asyncio.create_task(manter_lifespan())
+    espera = asyncio.create_task(pronto.wait())
+    await asyncio.wait({tarefa, espera}, return_when=asyncio.FIRST_COMPLETED)
+    espera.cancel()
+    if tarefa.done():
+        tarefa.result()
+    try:
         async with AsyncClient(
             transport=ASGITransport(app=app, raise_app_exceptions=False),
             base_url="http://leiloes.exemplo",
         ) as cliente:
             yield cliente
+    finally:
+        encerrar.set()
+        await tarefa
 
 
 @pytest.fixture

@@ -5,7 +5,7 @@ from starlette.requests import Request
 from starlette.responses import JSONResponse, Response
 
 METODOS_SEGUROS: frozenset[str] = frozenset({"GET", "HEAD", "OPTIONS"})
-ROTAS_ISENTAS: frozenset[str] = frozenset({"/api/auth/login"})
+ROTAS_ISENTAS: frozenset[str] = frozenset({"/api/auth/login", "/mcp"})
 COOKIE_CSRF: str = "csrf_token"
 HEADER_CSRF: str = "X-CSRF-Token"
 

@@ -104,3 +104,29 @@ def test_erro_de_ssl_nao_expoe_input_com_segredos() -> None:
         montar("dev", URL_SUPABASE_SEM_SSL, URL_LOCAL)
     assert "input_value" not in str(erro.value)
     assert "senha" not in str(erro.value)
+
+
+def test_mcp_desabilitado_por_padrao() -> None:
+    assert montar("prod", URL_LOCAL, URL_LOCAL).mcp_habilitado is False
+
+
+@pytest.mark.parametrize("app_env", ["dev", "prod"])
+def test_mcp_token_curto_falha(app_env: str) -> None:
+    with pytest.raises(ValidationError, match="MCP_TOKEN precisa de pelo menos 32 caracteres"):
+        Settings(
+            _env_file=None,
+            APP_ENV=app_env,
+            DATABASE_URL=URL_LOCAL,
+            DATABASE_URL_MIGRATOR=URL_LOCAL,
+            MCP_TOKEN="x" * 10,
+        )
+
+
+def test_mcp_token_valido_habilita() -> None:
+    settings = Settings(
+        _env_file=None,
+        DATABASE_URL=URL_LOCAL,
+        DATABASE_URL_MIGRATOR=URL_LOCAL,
+        MCP_TOKEN="x" * 32,
+    )
+    assert settings.mcp_habilitado is True

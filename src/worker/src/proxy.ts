@@ -7,6 +7,7 @@ export const HEADERS_SEGURANCA: Readonly<Record<string, string>> = {
 };
 
 export const ROTA_LOGIN = "/api/auth/login";
+const PREFIXOS_BACKEND = ["/api", "/mcp"] as const;
 export const NOME_INSTANCIA = "principal";
 
 const VARIAVEIS_CONTAINER = [
@@ -24,10 +25,13 @@ const VARIAVEIS_CONTAINER = [
   "SMTP_PASSWORD",
   "EMAIL_FROM",
   "MARKETING_EMAILS",
+  "MCP_TOKEN",
 ] as const satisfies readonly (keyof Env)[];
 
-export function ehApi(pathname: string): boolean {
-  return pathname === "/api" || pathname.startsWith("/api/");
+export function ehBackend(pathname: string): boolean {
+  return PREFIXOS_BACKEND.some(
+    (prefixo) => pathname === prefixo || pathname.startsWith(`${prefixo}/`),
+  );
 }
 
 export function ipCliente(request: Request): string {
@@ -66,7 +70,7 @@ export function variaveisDoContainer(env: Env): Record<string, string> {
 
 export async function rotear(request: Request, env: Env): Promise<Response> {
   const { pathname } = new URL(request.url);
-  if (!ehApi(pathname)) {
+  if (!ehBackend(pathname)) {
     return comHeadersSeguranca(await env.ASSETS.fetch(request));
   }
   if (pathname === ROTA_LOGIN && request.method === "POST") {

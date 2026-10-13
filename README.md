@@ -52,9 +52,17 @@ docker compose exec frontend pnpm test               # UI + MSW
 cd e2e && pnpm install && pnpm exec playwright install chromium && pnpm test   # fluxo completo contra o compose
 ```
 
+## Servidor MCP (caderno processual)
+
+`/mcp` expõe o caderno processual do pré-leilão pra clientes MCP (Claude Code/Desktop), **somente leitura**: `listar_processos`, `obter_caderno` (checklist + relatório + leilão) e `pendencias_pre_leilao`. Liga quando `MCP_TOKEN` (≥ 32 chars, ex.: `openssl rand -hex 32`) está no `src/.env`; vazio = desligado. Detalhes: [`SPEC/2026-10-01-backend.md` «MCP»](SPEC/2026-10-01-backend.md).
+
+```bash
+claude mcp add --transport http leiloes http://localhost/mcp --header "Authorization: Bearer $MCP_TOKEN"
+```
+
 ## Produção (Cloudflare)
 
-Um Worker (`src/worker/`) serve o build do frontend e encaminha `/api/*` pro container do backend (`src/backend/Dockerfile`), tudo na mesma origem. Banco no Supabase (seção abaixo). Exige plano Workers Paid. Detalhes: [`SPEC/2026-10-01-infra.md` §4](SPEC/2026-10-01-infra.md).
+Um Worker (`src/worker/`) serve o build do frontend e encaminha `/api/*` e `/mcp` pro container do backend (`src/backend/Dockerfile`), tudo na mesma origem. Banco no Supabase (seção abaixo). Exige plano Workers Paid. Detalhes: [`SPEC/2026-10-01-infra.md` §4](SPEC/2026-10-01-infra.md).
 
 Dois deploys, ambos manuais pelo GitHub Actions:
 
@@ -68,7 +76,7 @@ Configuração única:
 
    ```bash
    cd src/worker && pnpm install
-   for s in DATABASE_URL ANTHROPIC_API_KEY SMTP_HOST SMTP_USER SMTP_PASSWORD EMAIL_FROM MARKETING_EMAILS; do pnpm exec wrangler secret put "$s"; done
+   for s in DATABASE_URL ANTHROPIC_API_KEY SMTP_HOST SMTP_USER SMTP_PASSWORD EMAIL_FROM MARKETING_EMAILS MCP_TOKEN; do pnpm exec wrangler secret put "$s"; done
    ```
 
 3. Primeiro usuário: `criar-usuario` com o `src/.env` apontando pro Supabase (passo 4 da seção do Supabase).

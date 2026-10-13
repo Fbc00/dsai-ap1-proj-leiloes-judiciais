@@ -68,7 +68,8 @@
       "SMTP_USER",
       "SMTP_PASSWORD",
       "EMAIL_FROM",
-      "MARKETING_EMAILS"
+      "MARKETING_EMAILS",
+      "MCP_TOKEN"
     ]
   },
   "previews": {

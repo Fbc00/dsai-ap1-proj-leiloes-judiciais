@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   comHeadersSeguranca,
-  ehApi,
+  ehBackend,
   HEADERS_SEGURANCA,
   NOME_INSTANCIA,
   paraBackend,
@@ -33,6 +33,7 @@ function envFalso(limitePermitido = true): { env: Env; chamadas: Chamadas } {
     SMTP_PASSWORD: "senha",
     EMAIL_FROM: "leiloes@exemplo",
     MARKETING_EMAILS: "mkt@exemplo",
+    MCP_TOKEN: "t".repeat(32),
     ASSETS: {
       fetch: async (request: Request) => {
         chamadas.assets.push(request);
@@ -60,16 +61,22 @@ function envFalso(limitePermitido = true): { env: Env; chamadas: Chamadas } {
   return { env, chamadas };
 }
 
-describe("ehApi", () => {
+describe("ehBackend", () => {
   it("reconhece /api e subrotas", () => {
-    expect(ehApi("/api")).toBe(true);
-    expect(ehApi("/api/processos")).toBe(true);
+    expect(ehBackend("/api")).toBe(true);
+    expect(ehBackend("/api/processos")).toBe(true);
+  });
+
+  it("reconhece /mcp e subrotas", () => {
+    expect(ehBackend("/mcp")).toBe(true);
+    expect(ehBackend("/mcp/")).toBe(true);
   });
 
   it("nao confunde prefixo parecido nem rota do frontend", () => {
-    expect(ehApi("/apis")).toBe(false);
-    expect(ehApi("/")).toBe(false);
-    expect(ehApi("/processos/1")).toBe(false);
+    expect(ehBackend("/apis")).toBe(false);
+    expect(ehBackend("/mcpx")).toBe(false);
+    expect(ehBackend("/")).toBe(false);
+    expect(ehBackend("/processos/1")).toBe(false);
   });
 });
 
@@ -110,6 +117,7 @@ describe("variaveisDoContainer", () => {
     expect(variaveis.APP_ENV).toBe("prod");
     expect(variaveis.SMTP_PASSWORD).toBe("senha");
     expect(variaveis.ANTHROPIC_API_KEY).toBe("chave");
+    expect(variaveis.MCP_TOKEN).toBe("t".repeat(32));
     expect(variaveis.DATABASE_URL_MIGRATOR).toBe(variaveis.DATABASE_URL);
   });
 
@@ -141,6 +149,21 @@ describe("rotear", () => {
     expect(chamadas.backend[0]?.headers.get("x-forwarded-for")).toBe("1.1.1.1");
     expect(resposta.headers.get("set-cookie")).toBe("sessao=1");
     expect(resposta.headers.get("x-content-type-options")).toBe("nosniff");
+  });
+
+  it("encaminha /mcp para o container sem passar pelo limite de login", async () => {
+    const { env, chamadas } = envFalso();
+    await rotear(
+      new Request("https://leiloes.exemplo/mcp", {
+        method: "POST",
+        headers: { authorization: "Bearer x", "cf-connecting-ip": "1.1.1.1" },
+        body: "{}",
+      }),
+      env,
+    );
+    expect(chamadas.assets).toHaveLength(0);
+    expect(chamadas.chavesLimite).toHaveLength(0);
+    expect(chamadas.backend[0]?.headers.get("authorization")).toBe("Bearer x");
   });
 
   it("aplica rate limit por IP no POST de login", async () => {

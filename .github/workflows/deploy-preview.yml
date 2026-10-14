@@ -26,7 +26,7 @@ jobs:
     runs-on: ubuntu-latest
     environment: preview
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
       - name: Nome da Preview
         env:
           NOME: ${{ inputs.nome }}
@@ -83,7 +83,7 @@ jobs:
     runs-on: ubuntu-latest
     environment: preview
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
       - name: Nome da Preview
         env:
           NOME: ${{ inputs.nome }}

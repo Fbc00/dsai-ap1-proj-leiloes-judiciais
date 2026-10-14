@@ -35,7 +35,7 @@ jobs:
           nome=$(printf '%s' "$nome" | tr '[:upper:]' '[:lower:]' | sed -E 's/[^a-z0-9]+/-/g' | cut -c1-24 | sed -E 's/^-+//; s/-+$//')
           test -n "$nome"
           echo "PREVIEW_NAME=$nome" >> "$GITHUB_ENV"
-      - uses: astral-sh/setup-uv@v6
+      - uses: astral-sh/setup-uv@v7
         with:
           enable-cache: true
           cache-dependency-glob: src/backend/uv.lock
